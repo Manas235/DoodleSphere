@@ -613,6 +613,58 @@
   <!-- Notification Toast Container -->
   <div id="toast-container" class="fixed top-20 right-6 z-50 pointer-events-none space-y-2"></div>
 
+  <!-- Local File Protocol (file://) Guard & Diagnostic Overlay -->
+  <div id="file-protocol-warning" class="fixed inset-0 z-50 bg-black/90 backdrop-blur-md hidden items-center justify-center p-4">
+    <div class="animus-bracket-box max-w-lg w-full p-6 sm:p-8 border-2 border-animus-amber shadow-animus-amber text-slate-100 space-y-4">
+      <div class="flex items-center gap-3">
+        <span class="text-3xl">⚠️</span>
+        <div>
+          <div class="text-[10px] font-animus text-animus-amber tracking-widest uppercase">Animus Protocol Warning // Local Server Required</div>
+          <h2 class="font-codex font-bold text-xl text-white">Browser Security Block Detected</h2>
+        </div>
+      </div>
+
+      <p class="text-sm text-slate-300 leading-relaxed font-sans">
+        You opened <code class="text-animus-cyan bg-animus-surface px-1.5 py-0.5 rounded text-xs">index.html</code> directly via the <code class="text-animus-amber bg-animus-surface px-1.5 py-0.5 rounded text-xs">file://</code> protocol. Modern browsers strictly prohibit 3D WebGL modules and Three.js textures from loading over raw file paths.
+      </p>
+
+      <div class="bg-animus-surface/80 border border-white/10 rounded p-3 space-y-2 text-xs font-animus">
+        <div class="text-animus-cyan font-bold">⚡ TWO QUICK WAYS TO LAUNCH:</div>
+        <div class="flex items-start gap-2 text-slate-300">
+          <span class="text-animus-amber font-bold">1.</span>
+          <span>Double-click <strong class="text-white">start.bat</strong> in this folder (starts server and opens your browser automatically).</span>
+        </div>
+        <div class="flex items-start gap-2 text-slate-300">
+          <span class="text-animus-amber font-bold">2.</span>
+          <span>In VS Code or terminal, run <code class="text-animus-cyan">npm start</code>, then open <strong class="text-white">http://localhost:3000</strong>.</span>
+        </div>
+      </div>
+
+      <div class="flex flex-col sm:flex-row items-center gap-3 pt-2">
+        <a href="http://localhost:3000" id="btn-goto-localhost" class="w-full sm:w-auto flex-1 text-center py-2.5 px-4 bg-animus-cyan hover:bg-cyan-400 text-animus-void font-animus text-xs font-bold tracking-widest rounded shadow-animus-cyan transition-all">
+          CONNECT TO LOCALHOST:3000 🚀
+        </a>
+        <button type="button" onclick="document.getElementById('file-protocol-warning').classList.add('hidden')" class="w-full sm:w-auto px-4 py-2.5 font-animus text-xs text-slate-400 hover:text-white border border-white/20 rounded">
+          DISMISS
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Immediate pre-flight protocol check (runs before module scripts)
+    if (window.location.protocol === 'file:') {
+      console.warn('[DoodleSphere] Detected file:// protocol. ES Modules require http:// or https://.');
+      document.addEventListener('DOMContentLoaded', function() {
+        var warnEl = document.getElementById('file-protocol-warning');
+        if (warnEl) {
+          warnEl.classList.remove('hidden');
+          warnEl.classList.add('flex');
+        }
+      });
+    }
+  </script>
+
   <!-- Main Application Logic (ESM with Cache-Buster) -->
   <script type="module" src="main.js?v=3.0"></script>
 </body>

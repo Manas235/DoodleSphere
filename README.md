@@ -46,13 +46,17 @@
    ```
 
 3. Start the local server:
-   ```bash
-   npm start
-   # or
-   node server.js
-   ```
+   - **Windows (1-Click)**: Double-click `start.bat` (launches server and automatically opens your browser).
+   - **Command Line**:
+     ```bash
+     npm start
+     # or
+     node server.js
+     ```
 
 4. Open [http://localhost:3000](http://localhost:3000) in your web browser!
+
+> ⚠️ **Note**: Opening `index.html` directly via `file://` is blocked by modern browser security policies because ES Modules and WebGL textures require HTTP/HTTPS origin. Always use `start.bat` or `npm start`.
 
 ---
 

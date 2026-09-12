@@ -321,11 +321,21 @@ When illuminated by cyan directional keylights, the shadows don't just fade into
 
 class PostService {
   constructor() {
-    this.posts = JSON.parse(localStorage.getItem('doodlesphere_animus_posts')) || INITIAL_POSTS;
+    const saved = localStorage.getItem('doodlesphere_animus_posts_v2');
+    if (saved) {
+      try {
+        this.posts = JSON.parse(saved);
+      } catch (e) {
+        this.posts = INITIAL_POSTS;
+      }
+    } else {
+      this.posts = INITIAL_POSTS;
+      this.save();
+    }
   }
 
   save() {
-    localStorage.setItem('doodlesphere_animus_posts', JSON.stringify(this.posts));
+    localStorage.setItem('doodlesphere_animus_posts_v2', JSON.stringify(this.posts));
   }
 
   getAll() {

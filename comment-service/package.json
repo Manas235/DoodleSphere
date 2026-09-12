@@ -1,0 +1,12 @@
+{
+  "name": "comment-service",
+  "version": "1.0.0",
+  "description": "Isolated Comment Service with Profanity Filtering & Moderation",
+  "main": "src/app.js",
+  "scripts": {
+    "test": "node test/profanityFilter.test.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2"
+  }
+}

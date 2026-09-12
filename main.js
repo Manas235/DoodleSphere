@@ -1,16 +1,22 @@
 /**
- * DoodleSphere — 3D Comic & Doodle Social Blogging Platform
- * Architecture: Clean separation of Three.js 3D Scene Engine, Post Data Service,
- * Comment Service, Auth Service, and UI Controller.
+ * DoodleSphere — 3D Animus Void & Historical Codex Social Blogging Platform
+ * 
+ * Architecture:
+ * 1. AnimusSoundFX: Web Audio API sound synthesizer for Animus telemetry & parchment SFX.
+ * 2. Post & Comment Service: Memory sequence data store with threaded discussion tree.
+ * 3. AuthService: Abstergo Subject session manager with localStorage persistence.
+ * 4. ThreeAnimusScene: Pure Three.js 3D engine simulating the Animus loading void,
+ *    floating memory fragments, doodle-ink comic textures, and codex transitions.
+ * 5. UIController: DOM event coordination, reading overlay, writing modal, and HUD.
  */
 
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
 /* ==========================================================================
-   1. SOUND EFFECTS SYNTHESIZER (Web Audio API)
+   1. ANIMUS & CODEX AUDIO SYNTHESIZER (Web Audio API)
    ========================================================================== */
-class ComicSoundFX {
+class AnimusSoundFX {
   constructor() {
     this.ctx = null;
     this.enabled = true;
@@ -23,252 +29,303 @@ class ComicSoundFX {
     }
   }
 
-  playPop() {
-    if (!this.enabled) return;
-    this.init();
-    if (!this.ctx) return;
-    const osc = this.ctx.createOscillator();
-    const gain = this.ctx.createGain();
-    osc.type = 'sine';
-    const now = this.ctx.currentTime;
-    osc.frequency.setValueAtTime(320, now);
-    osc.frequency.exponentialRampToValueAtTime(800, now + 0.08);
-    gain.gain.setValueAtTime(0.2, now);
-    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.08);
-    osc.connect(gain);
-    gain.connect(this.ctx.destination);
-    osc.start(now);
-    osc.stop(now + 0.09);
-  }
-
-  playWhoosh() {
-    if (!this.enabled) return;
-    this.init();
-    if (!this.ctx) return;
-    const osc = this.ctx.createOscillator();
-    const gain = this.ctx.createGain();
-    osc.type = 'triangle';
-    const now = this.ctx.currentTime;
-    osc.frequency.setValueAtTime(450, now);
-    osc.frequency.exponentialRampToValueAtTime(160, now + 0.2);
-    gain.gain.setValueAtTime(0.18, now);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
-    osc.connect(gain);
-    gain.connect(this.ctx.destination);
-    osc.start(now);
-    osc.stop(now + 0.23);
-  }
-
-  playChime() {
+  playSync() {
     if (!this.enabled) return;
     this.init();
     if (!this.ctx) return;
     const now = this.ctx.currentTime;
-    [523.25, 659.25, 783.99].forEach((freq, i) => {
+    
+    // Animus harmonic synchronization chime
+    [440, 659.25, 880, 1318.5].forEach((freq, i) => {
       const osc = this.ctx.createOscillator();
       const gain = this.ctx.createGain();
       osc.type = 'sine';
-      osc.frequency.setValueAtTime(freq, now + i * 0.06);
-      gain.gain.setValueAtTime(0.12, now + i * 0.06);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.06 + 0.25);
+      osc.frequency.setValueAtTime(freq, now + i * 0.04);
+      gain.gain.setValueAtTime(0.08, now + i * 0.04);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.04 + 0.35);
       osc.connect(gain);
       gain.connect(this.ctx.destination);
-      osc.start(now + i * 0.06);
-      osc.stop(now + i * 0.06 + 0.26);
+      osc.start(now + i * 0.04);
+      osc.stop(now + i * 0.04 + 0.38);
     });
+  }
+
+  playParchmentRustle() {
+    if (!this.enabled) return;
+    this.init();
+    if (!this.ctx) return;
+    const now = this.ctx.currentTime;
+
+    // Filtered noise buffer simulating manuscript paper rustle
+    const bufferSize = this.ctx.sampleRate * 0.15;
+    const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) {
+      data[i] = Math.random() * 2 - 1;
+    }
+
+    const noise = this.ctx.createBufferSource();
+    noise.buffer = buffer;
+
+    const filter = this.ctx.createBiquadFilter();
+    filter.type = 'bandpass';
+    filter.frequency.setValueAtTime(1200, now);
+    filter.Q.setValueAtTime(1.5, now);
+
+    const gain = this.ctx.createGain();
+    gain.gain.setValueAtTime(0.12, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.14);
+
+    noise.connect(filter);
+    filter.connect(gain);
+    gain.connect(this.ctx.destination);
+
+    noise.start(now);
+  }
+
+  playGlitch() {
+    if (!this.enabled) return;
+    this.init();
+    if (!this.ctx) return;
+    const now = this.ctx.currentTime;
+
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(800, now);
+    osc.frequency.linearRampToValueAtTime(180, now + 0.06);
+
+    gain.gain.setValueAtTime(0.06, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.06);
+
+    osc.connect(gain);
+    gain.connect(this.ctx.destination);
+    osc.start(now);
+    osc.stop(now + 0.07);
+  }
+
+  playClick() {
+    if (!this.enabled) return;
+    this.init();
+    if (!this.ctx) return;
+    const now = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(1200, now);
+    gain.gain.setValueAtTime(0.05, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.03);
+    osc.connect(gain);
+    gain.connect(this.ctx.destination);
+    osc.start(now);
+    osc.stop(now + 0.04);
   }
 }
 
-const soundFX = new ComicSoundFX();
+const soundFX = new AnimusSoundFX();
 
 
 /* ==========================================================================
-   2. POST & COMMENT SERVICE (Data Store & State)
+   2. POST & COMMENT SERVICE (Data Store & Threaded Trees)
    ========================================================================== */
 const INITIAL_POSTS = [
   {
-    id: 'post-1',
-    title: 'Ink & Silicon: Building Hand-Drawn Metaspaces',
-    category: 'TECH',
-    author: 'Alex Inkwell',
-    authorBio: 'Creative Technologist & Pixel Alchemist',
+    id: 'animus-post-1',
+    title: 'The Flying Machine & The Venice Canals: Aerodynamic Sketches',
+    category: 'CODEX',
+    era: 'Renaissance, 1486',
+    author: 'Leonardo da Vinci',
+    authorBio: 'Master Scribe & Inventor of the Brotherhood',
     readTime: '4 min read',
-    date: 'Sep 9, 2026',
-    stamp: '🚀',
-    accentColor: '#00d2d3',
-    likes: 42,
+    date: 'Sequence 04 // Venice',
+    stamp: '🦅',
+    accentColor: '#00f0ff',
+    likes: 128,
     hasLiked: false,
-    tags: ['threejs', 'creative-coding', 'webgl', 'doodle'],
-    content: `Why do modern user interfaces feel so sterile and geometric? Rectangles, perfect 1px borders, and flat glass gradients have homogenized our digital universe.
+    tags: ['renaissance', 'flight', 'schematics', 'doodles', 'venice'],
+    content: `When observation turns to mimicry of the raptor, the human mind reaches beyond terrestrial bounds.
 
-In DoodleSphere, every 3D notebook is rendered directly with real-time procedural canvas textures! We draw jittered ink lines, halftone stippling, and organic sketch borders right onto Three.js meshes.
+A bird is an instrument working according to mathematical law, which is within the capacity of man to reproduce with all its movements. In this codex folio, notice the ribbed bat-wing struts assembled from cured willow reeds and waxed linen.
 
-By pairing modern WebGL raycasting with responsive 2D comic panels, users don't just "scroll" through a feed—they explore an expansive constellation of floating sketchbooks in space.`,
+By distributing the pilot's weight through the stirrup assembly, the equilibrium shift mimics the eagle's stoop over the Grand Canal. The guards on the Palazzo ducale watched with open mouths as the prototype touched the thermals over Saint Mark's Campanile!
+
+Remember: ink and thought must flow unhindered before wood and metal take flight.`,
     comments: [
       {
         id: 'c-101',
-        author: 'Sarah Scribble',
-        date: '10 mins ago',
-        text: 'The hand-drawn comic shader feels so tactile! Reminds me of classic indie zines and Calvin & Hobbes.',
-        upvotes: 8,
+        author: 'Ezio Auditore',
+        date: 'Venice Memory Log',
+        text: 'The glider performed splendidly over the canal, Leonardo! Though a bit more smoke from the braziers would have helped sustain altitude.',
+        upvotes: 42,
         replies: [
           {
             id: 'c-102',
-            author: 'Alex Inkwell',
-            date: '5 mins ago',
-            text: 'Thank you Sarah! Calvin & Hobbes line weights were definitely a big inspiration for our outline technique.',
-            upvotes: 3,
+            author: 'Leonardo da Vinci',
+            date: 'Workshop Notes',
+            text: 'I shall double the wingspan in the next revision, my dear friend. And perhaps reinforce the tail rudder against crossbow bolts!',
+            upvotes: 27,
             replies: []
           }
         ]
       },
       {
         id: 'c-103',
-        author: 'DevSketcher',
-        date: '25 mins ago',
-        text: 'How are you handling the smooth camera tweening when clicking a 3D book?',
-        upvotes: 5,
-        replies: [
-          {
-            id: 'c-104',
-            author: 'Alex Inkwell',
-            date: '12 mins ago',
-            text: 'We interpolate both camera.position and controls.target using cubic easing curves for that snappy comic punch!',
-            upvotes: 4,
-            replies: []
-          }
-        ]
+        author: 'Shaun Hastings',
+        date: 'Modern Animus Annotation',
+        text: 'Historians debated for centuries whether this prototype was actually airborne. The genetic memory conclusively proves Ezio took it for a joyride.',
+        upvotes: 19,
+        replies: []
       }
     ]
   },
   {
-    id: 'post-2',
-    title: 'The Lost Art of Marginalia & Coffee Doodles',
-    category: 'ART',
-    author: 'Maya Lin',
-    authorBio: 'Illustrator & Coffee Brewer',
-    readTime: '3 min read',
-    date: 'Sep 8, 2026',
-    stamp: '☕',
-    accentColor: '#ff5c8a',
-    likes: 29,
+    id: 'animus-post-2',
+    title: 'Animus Void Architecture: Reconstructing Memory Strands in Three.js',
+    category: 'TECH',
+    era: 'Modern Era // 2026',
+    author: 'Rebecca Crane',
+    authorBio: 'Lead Hardware Engineer & Animus Architect',
+    readTime: '5 min read',
+    date: 'Abstergo Infiltration Log',
+    stamp: '⚡',
+    accentColor: '#00f0ff',
+    likes: 94,
     hasLiked: false,
-    tags: ['illustration', 'notebooks', 'coffee', 'sketches'],
-    content: `Medieval monks used to draw mythical creatures, snail knights, and silly caricatures in the margins of sacred manuscripts. This practice was called marginalia.
+    tags: ['animus', 'threejs', 'shaders', 'webgl', 'code'],
+    content: `Rendering the Animus loading void requires blending stark cybernetic geometry with the organic warmth of human memories.
 
-When you doodle while thinking, your brain bypasses rigid linear logic. The coffee ring on your page becomes the halo of a tiny astronaut; a slip of the pen transforms into a cartoon mountain peak.
+When Shaun and I upgraded to the Animus 4.38 architecture, we discarded standard linear asset pipelines. Instead, memory fragments exist as floating crystalline polyhedra in an infinite dark obsidian matrix.
 
-Don't let your ideas remain pristine in cold digital spreadsheets. Let your thoughts get inked, scratched, and scribbled!`,
+Each fragment's surface is procedurally synthesized:
+1. An underlying Ben-Day halftone comic dot pattern for tactile printing depth.
+2. Hand-inked Renaissance sketches rendered dynamically to 2D HTML5 canvas buffers.
+3. Volumetric cyan holographic edge glow that reacts dynamically to raycast hover events.
+
+When a user taps into a memory shard, we don't just switch screens—the 3D camera locks coordinates and unfolds the digital polyhedra into an authentic hand-drawn parchment codex in real-time.`,
     comments: [
       {
         id: 'c-201',
-        author: 'PaperKnight',
-        date: '1 hour ago',
-        text: 'Snail knights fighting rabbits in medieval margins is literally peak illustration history.',
-        upvotes: 11,
+        author: 'Kenji Sato',
+        date: '2 hours ago',
+        text: 'The procedural canvas-to-texture approach gives such high fidelity without loading megabytes of static texture packs. Brilliant architecture!',
+        upvotes: 15,
         replies: []
       }
     ]
   },
   {
-    id: 'post-3',
-    title: 'Midnight Musings on Autonomous AI Art Studios',
-    category: 'IDEAS',
-    author: 'Cyborg Quill',
-    authorBio: 'Speculative Fiction Writer',
-    readTime: '5 min read',
-    date: 'Sep 7, 2026',
-    stamp: '💡',
-    accentColor: '#9b5de5',
-    likes: 56,
+    id: 'animus-post-3',
+    title: 'The Creed & The Leap of Faith: On Freedom and Moral Dogma',
+    category: 'PHILOSOPHY',
+    era: 'Masyaf, 1191',
+    author: 'Altaïr Ibn-La\'Ahad',
+    authorBio: 'Mentor of the Levantine Brotherhood',
+    readTime: '6 min read',
+    date: 'Masyaf Archives',
+    stamp: '🗡️',
+    accentColor: '#e5a93b',
+    likes: 186,
     hasLiked: false,
-    tags: ['philosophy', 'ai', 'creativity', 'future'],
-    content: `Will synthetic agents ever experience the physical resistance of graphite on coarse cotton paper?
+    tags: ['philosophy', 'creed', 'masyaf', 'wisdom', 'brotherhood'],
+    content: `"Nothing is true, everything is permitted."
 
-There is something irreplaceable about human error in illustration: the tremor in a freehand circle, the unexpected ink blot from a fountain pen, the tactile smudge of charcoal on an index finger.
+To say that nothing is true is to realize that the foundations of society are fragile, and that we must be the shepherds of our own civilization.
 
-Future AI interfaces shouldn't just strive for clean photorealism. They should embrace imperfections, whimsy, and handwritten charm.`,
+To say that everything is permitted is to understand that we are the architects of our actions, and that we must live with their consequences, whether glorious or tragic.
+
+When we leap from the highest minarets into the hay wagons below, it is not merely a display of acrobatics—it is an absolute surrender of fear, trusting our instincts, our brotherhood, and gravity itself.`,
     comments: [
       {
         id: 'c-301',
-        author: 'VoxelVagabond',
-        date: '2 hours ago',
-        text: 'Embracing imperfections is exactly why the doodle aesthetic resonates so deeply with folks right now.',
-        upvotes: 7,
+        author: 'Ezio Auditore',
+        date: 'Florence Sequence',
+        text: 'Your words echoed in my ears during every trial in Rome and Constantinople, Mentor.',
+        upvotes: 38,
         replies: []
       }
     ]
   },
   {
-    id: 'post-4',
-    title: 'The Dragon Who Forgot How to Breathe Fire',
-    category: 'STORIES',
-    author: 'Barnaby Finch',
-    authorBio: 'Folklorist & Story Spinner',
-    readTime: '6 min read',
-    date: 'Sep 6, 2026',
-    stamp: '🌈',
-    accentColor: '#ffd13b',
-    likes: 64,
+    id: 'animus-post-4',
+    title: 'Illuminated Marginalia: The Doodle Art of Historical Manuscripts',
+    category: 'CODEX',
+    era: 'Bologna, 1502',
+    author: 'Niccolò Machiavelli',
+    authorBio: 'Diplomat & Philosopher of Florence',
+    readTime: '3 min read',
+    date: 'Diplomatic Dispatches',
+    stamp: '📜',
+    accentColor: '#d4af37',
+    likes: 72,
     hasLiked: false,
-    tags: ['fiction', 'short-story', 'fantasy', 'comics'],
-    content: `Ignis woke up one frosty Tuesday morning and tried to ignite his breakfast skillet. Instead of a roaring jet of crimson flame, all that emerged from his snout was a stream of warm rainbow soap bubbles.
+    tags: ['manuscript', 'doodles', 'history', 'art', 'marginalia'],
+    content: `Take any sacred treaty or state decree, and look closely at the outer margins. What do you see?
 
-The bubbles bobbed softly over the tavern roofs, reflecting the golden sunrise. The village children gasped in delight, dancing through the cobblestone alleys chasing the iridescent spheres.
+Behind the serious political declarations, scribes scribbled miniature jousting snails, mischievous foxes wearing cardinal robes, and caricatures of neighboring chancellors!
 
-"Well," Ignis chuckled to himself, folding his leathery green wings, "perhaps entertaining the kingdom pays better than terrifying it anyway."`,
-    comments: [
-      {
-        id: 'c-401',
-        author: 'WhimsicalWanderer',
-        date: '3 hours ago',
-        text: 'This warmed my heart so much! I can totally picture this as a Saturday morning animated strip.',
-        upvotes: 9,
-        replies: []
-      }
-    ]
-  },
-  {
-    id: 'post-5',
-    title: 'Shaders, Halftones, and Retro Print Dots in 3D',
-    category: 'TECH',
-    author: 'Kenji Sato',
-    authorBio: 'Graphics Programmer',
-    readTime: '4 min read',
-    date: 'Sep 5, 2026',
-    stamp: '⚡',
-    accentColor: '#ff9f1c',
-    likes: 38,
-    hasLiked: false,
-    tags: ['shaders', 'halftone', 'threejs', 'retro'],
-    content: `The Ben-Day dots technique originated in 1879 for commercial printing presses. By spacing tiny magenta, cyan, and black dots, printers could simulate full tonal gradients with limited ink plates.
-
-Bringing this into Three.js allows us to blend 3D depth with vintage comic book textures. Each 3D post mesh in this platform dynamically calculates dot patterns based on light angles!`,
+Doodling has always been humanity's subtle rebellion against rigid structure. It represents the unfiltered sparks of creativity that formal text tries so desperately to constrain. Never suppress your margins; that is where genius hides.`,
     comments: []
   },
   {
-    id: 'post-6',
-    title: 'Retro Arcade Cabinets & The Joy of 8-Bit Pixels',
-    category: 'ART',
-    author: 'Pixel Pioneer',
-    authorBio: 'Chiptune Composer & Retro Arcade Archivist',
-    readTime: '3 min read',
-    date: 'Sep 4, 2026',
-    stamp: '👾',
-    accentColor: '#2ec4b6',
-    likes: 47,
+    id: 'animus-post-5',
+    title: 'Piece of Eden #02: Holographic Relic or Ancient Precursor Artifact?',
+    category: 'LORE',
+    era: 'Precursor Age',
+    author: 'Shaun Hastings',
+    authorBio: 'Historian, Researcher & Tea Enthusiast',
+    readTime: '5 min read',
+    date: 'Database Entry 88-B',
+    stamp: '🍎',
+    accentColor: '#e63946',
+    likes: 110,
     hasLiked: false,
-    tags: ['pixelart', 'retro', 'gaming', 'nostalgia'],
-    content: `Nothing evokes nostalgia quite like the neon glow and wooden side panels of a 1980s arcade cabinet in a dark mall corner.
+    tags: ['eden', 'precursors', 'isu', 'lore', 'mystery'],
+    content: `The Apple of Eden isn't magic—it's advanced technology indistinguishable from sorcery to early civilizations.
 
-When pixels were scarce, every single colored square had to tell a story. An 8x8 sprite wasn't just pixels; it was an astronaut, an alien invader, or a magical potion bottle. That constraint is what birthed true visual mastery.`,
+Constructed from gold-palladium composite alloys with an internal quantum harmonic matrix, the sphere projects optical illusions directly into human neurotransmitter receptors.
+
+In this dossier, I've compiled hand-drawn sketches of its internal glyph rings, deciphered during Desmond's synchronization with Sequence 9. Notice how the fractal concentric circles match Leonardo's Vitruvian proportions!`,
+    comments: [
+      {
+        id: 'c-501',
+        author: 'Rebecca Crane',
+        date: 'Animus Comm Link',
+        text: 'Keep digging through the glyph frequencies, Shaun. There might be an encryption key we can feed directly into the decoding cluster.',
+        upvotes: 12,
+        replies: []
+      }
+    ]
+  },
+  {
+    id: 'animus-post-6',
+    title: 'Heavy Ink Crosshatching & Halftone Ben-Day Dots in 3D WebGL',
+    category: 'TECH',
+    era: 'Digital Matrix // 2026',
+    author: 'Alex Inkwell',
+    authorBio: 'Creative Technologist & Comic Illustrator',
+    readTime: '4 min read',
+    date: 'Graphic Shaders Lab',
+    stamp: '🎨',
+    accentColor: '#00f0ff',
+    likes: 85,
+    hasLiked: false,
+    tags: ['shaders', 'webgl', 'illustration', 'comics', 'threejs'],
+    content: `How do we marry the hand-drawn grit of comic book ink with the mathematical precision of 3D computer graphics?
+
+In DoodleSphere, we employ an inverted-hull black outline mesh around each memory fragment, paired with procedural Ben-Day dot matrices rendered on the diffuse texture map.
+
+When illuminated by cyan directional keylights, the shadows don't just fade into generic dark gray—they break down into crosshatch lines and ink splatters reminiscent of graphic novels and Renaissance sketches.`,
     comments: []
   }
 ];
 
 class PostService {
   constructor() {
-    this.posts = [...INITIAL_POSTS];
+    this.posts = JSON.parse(localStorage.getItem('doodlesphere_animus_posts')) || INITIAL_POSTS;
+  }
+
+  save() {
+    localStorage.setItem('doodlesphere_animus_posts', JSON.stringify(this.posts));
   }
 
   getAll() {
@@ -279,35 +336,27 @@ class PostService {
     return this.posts.find(p => p.id === id);
   }
 
-  createPost(newPostData) {
+  create(postData) {
     const newPost = {
-      id: `post-${Date.now()}`,
-      title: newPostData.title,
-      category: newPostData.category || 'TECH',
-      author: newPostData.author || 'Anonymous Doodler',
-      authorBio: 'Creative Sphere Contributor',
-      readTime: `${Math.max(1, Math.round(newPostData.content.split(' ').length / 150))} min read`,
-      date: 'Just now',
-      stamp: newPostData.stamp || '🚀',
-      accentColor: this.getCategoryColor(newPostData.category),
+      id: `animus-post-${Date.now()}`,
+      title: postData.title,
+      category: postData.category || 'CODEX',
+      era: postData.era || 'Sequence Memory',
+      author: postData.author || 'Brotherhood Initiate',
+      authorBio: 'Synchronized Animus User',
+      readTime: `${Math.max(2, Math.ceil((postData.content || '').split(' ').length / 100))} min read`,
+      date: 'Just Synchronized',
+      stamp: postData.stamp || '🦅',
+      accentColor: postData.category === 'TECH' ? '#00f0ff' : (postData.category === 'PHILOSOPHY' ? '#e5a93b' : '#d4af37'),
       likes: 1,
       hasLiked: false,
-      tags: newPostData.tags || ['creative', 'doodlesphere'],
-      content: newPostData.content,
+      tags: postData.tags && postData.tags.length > 0 ? postData.tags : ['animus', 'codex', 'doodle'],
+      content: postData.content,
       comments: []
     };
     this.posts.unshift(newPost);
+    this.save();
     return newPost;
-  }
-
-  getCategoryColor(category) {
-    switch (category) {
-      case 'ART': return '#ff5c8a';
-      case 'TECH': return '#00d2d3';
-      case 'STORIES': return '#ffd13b';
-      case 'IDEAS': return '#9b5de5';
-      default: return '#2ec4b6';
-    }
   }
 
   toggleLike(postId) {
@@ -315,40 +364,40 @@ class PostService {
     if (!post) return null;
     post.hasLiked = !post.hasLiked;
     post.likes += post.hasLiked ? 1 : -1;
+    this.save();
     return post;
   }
 
-  addComment(postId, parentCommentId, text, authorName) {
+  addComment(postId, commentText, authorName, parentCommentId = null) {
     const post = this.getById(postId);
     if (!post) return null;
 
     const newComment = {
-      id: `c-${Date.now()}-${Math.floor(Math.random()*1000)}`,
-      author: authorName || 'Doodle Visitor',
-      date: 'Just now',
-      text: text.trim(),
-      upvotes: 1,
+      id: `c-${Date.now()}`,
+      author: authorName || 'Brotherhood Scout',
+      date: 'Moments ago',
+      text: commentText,
+      upvotes: 0,
       replies: []
     };
 
     if (!parentCommentId) {
       post.comments.unshift(newComment);
     } else {
-      // Find parent comment recursively
-      const appendRecursive = (commentList) => {
-        for (const c of commentList) {
+      const appendRecursive = (list) => {
+        for (const c of list) {
           if (c.id === parentCommentId) {
+            c.replies = c.replies || [];
             c.replies.push(newComment);
             return true;
           }
-          if (c.replies && c.replies.length > 0) {
-            if (appendRecursive(c.replies)) return true;
-          }
+          if (c.replies && appendRecursive(c.replies)) return true;
         }
         return false;
       };
       appendRecursive(post.comments);
     }
+    this.save();
     return post;
   }
 
@@ -366,6 +415,7 @@ class PostService {
       return false;
     };
     findAndUpvote(post.comments);
+    this.save();
   }
 
   countTotalComments(comments) {
@@ -381,11 +431,16 @@ class PostService {
 
 
 /* ==========================================================================
-   3. AUTH SERVICE
+   3. AUTH SERVICE (Abstergo Subject Session)
    ========================================================================== */
 class AuthService {
   constructor() {
-    this.user = JSON.parse(localStorage.getItem('doodlesphere_user')) || null;
+    this.user = JSON.parse(localStorage.getItem('doodlesphere_animus_user')) || {
+      name: 'Ezio Auditore',
+      avatar: 'E',
+      email: 'ezio@brotherhood.firenze',
+      role: 'Master Assassin'
+    };
     this.listeners = [];
   }
 
@@ -399,29 +454,31 @@ class AuthService {
 
   login(username) {
     this.user = {
-      name: username || 'DoodleMaster',
-      avatar: (username || 'D')[0].toUpperCase(),
-      email: `${(username || 'doodler').toLowerCase()}@doodlesphere.art`
+      name: username || 'Subject 17',
+      avatar: (username || 'S')[0].toUpperCase(),
+      email: `${(username || 'subject').toLowerCase().replace(/\s+/g, '')}@abstergo.com`,
+      role: 'Synchronized Subject'
     };
-    localStorage.setItem('doodlesphere_user', JSON.stringify(this.user));
+    localStorage.setItem('doodlesphere_animus_user', JSON.stringify(this.user));
     this.notify();
     return this.user;
   }
 
   register(username, email) {
     this.user = {
-      name: username || 'InkCaptain',
-      avatar: (username || 'I')[0].toUpperCase(),
-      email: email || 'ink@doodlesphere.art'
+      name: username || 'Recruit Assassin',
+      avatar: (username || 'R')[0].toUpperCase(),
+      email: email || 'recruit@brotherhood.org',
+      role: 'Initiate'
     };
-    localStorage.setItem('doodlesphere_user', JSON.stringify(this.user));
+    localStorage.setItem('doodlesphere_animus_user', JSON.stringify(this.user));
     this.notify();
     return this.user;
   }
 
   logout() {
     this.user = null;
-    localStorage.removeItem('doodlesphere_user');
+    localStorage.removeItem('doodlesphere_animus_user');
     this.notify();
   }
 
@@ -430,15 +487,15 @@ class AuthService {
   }
 
   getUserName() {
-    return this.user ? this.user.name : 'Guest Doodler';
+    return this.user ? this.user.name : 'Unsynchronized Subject';
   }
 }
 
 
 /* ==========================================================================
-   4. THREE.JS 3D SCENE & DOODLE ENVIRONMENT
+   4. THREE.JS 3D SCENE & ANIMUS VOID ENGINE
    ========================================================================== */
-class ThreeDoodleScene {
+class ThreeAnimusScene {
   constructor(containerElement, onPostSelected, onPostHover) {
     this.container = containerElement;
     this.onPostSelected = onPostSelected;
@@ -451,24 +508,26 @@ class ThreeDoodleScene {
     this.raycaster = new THREE.Raycaster();
     this.mouse = new THREE.Vector2(-999, -999);
 
-    this.postMeshes = []; // Array of { mesh, postData, originalPos, originalRot }
+    this.postMeshes = []; // { mesh, postData, originalPos, originalRot, codexMaterials, shardMaterials }
     this.hoveredObject = null;
-    this.isCameraAnimating = false;
     this.selectedPostMesh = null;
+    this.activeFilter = 'ALL';
+    this.searchQuery = '';
 
-    // Camera default overview position
-    this.defaultCameraPos = new THREE.Vector3(0, 18, 48);
+    // Camera default overview coordinates
+    this.defaultCameraPos = new THREE.Vector3(0, 16, 44);
     this.defaultTarget = new THREE.Vector3(0, 0, 0);
 
     // Camera animation tween state
     this.cameraTween = {
       active: false,
       startTime: 0,
-      duration: 1100,
+      duration: 1200,
       startPos: new THREE.Vector3(),
       targetPos: new THREE.Vector3(),
       startLookAt: new THREE.Vector3(),
-      targetLookAt: new THREE.Vector3()
+      targetLookAt: new THREE.Vector3(),
+      onComplete: null
     };
 
     this.clock = new THREE.Clock();
@@ -478,8 +537,8 @@ class ThreeDoodleScene {
   init() {
     // 1. Scene Setup
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color(0xfaf5e8);
-    this.scene.fog = new THREE.FogExp2(0xfaf5e8, 0.012);
+    this.scene.background = new THREE.Color(0x06090e); // Deep Obsidian Animus Void
+    this.scene.fog = new THREE.FogExp2(0x06090e, 0.012);
 
     // 2. Camera Setup
     const width = this.container.clientWidth;
@@ -495,357 +554,416 @@ class ThreeDoodleScene {
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.container.appendChild(this.renderer.domElement);
 
-    // 4. OrbitControls
+    // 4. OrbitControls with smooth damping
     this.controls = new OrbitControls(this.camera, this.renderer.domElement);
     this.controls.enableDamping = true;
     this.controls.dampingFactor = 0.05;
-    this.controls.maxDistance = 90;
-    this.controls.minDistance = 8;
-    this.controls.maxPolarAngle = Math.PI / 2 + 0.15; // Don't flip below bottom plane
+    this.controls.maxDistance = 85;
+    this.controls.minDistance = 6;
+    this.controls.maxPolarAngle = Math.PI / 2 + 0.12;
     this.controls.target.copy(this.defaultTarget);
 
-    // 5. Lighting
+    // 5. Lighting Setup
     this.setupLighting();
 
-    // 6. Environment Props (Hand-drawn floor grid, comic clouds, doodle particles)
-    this.setupEnvironment();
+    // 6. Animus Void Environment (Infinite Grid, DNA helix, dust particles)
+    this.setupAnimusEnvironment();
 
     // 7. Event Listeners
     window.addEventListener('resize', () => this.onWindowResize());
     this.renderer.domElement.addEventListener('pointermove', (e) => this.onPointerMove(e));
     this.renderer.domElement.addEventListener('click', (e) => this.onPointerClick(e));
 
-    // 8. Start Loop
+    // 8. Start Render Loop
     this.animate();
   }
 
   setupLighting() {
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.85);
+    // Ambient cyan luminescence
+    const ambientLight = new THREE.AmbientLight(0x0a2238, 1.8);
     this.scene.add(ambientLight);
 
-    const dirLight = new THREE.DirectionalLight(0xfff7e6, 1.2);
-    dirLight.position.set(30, 45, 25);
+    // Primary directional Animus spotlight
+    const dirLight = new THREE.DirectionalLight(0x00f0ff, 2.2);
+    dirLight.position.set(25, 40, 20);
     dirLight.castShadow = true;
     dirLight.shadow.mapSize.width = 1024;
     dirLight.shadow.mapSize.height = 1024;
-    dirLight.shadow.camera.near = 10;
-    dirLight.shadow.camera.far = 100;
-    dirLight.shadow.camera.left = -40;
-    dirLight.shadow.camera.right = 40;
-    dirLight.shadow.camera.top = 40;
-    dirLight.shadow.camera.bottom = -40;
     dirLight.shadow.bias = -0.001;
     this.scene.add(dirLight);
 
-    const fillLight = new THREE.DirectionalLight(0x00d2d3, 0.35);
-    fillLight.position.set(-30, -10, -20);
-    this.scene.add(fillLight);
+    // Warm golden secondary rim light for historical contrast
+    const rimLight = new THREE.DirectionalLight(0xe5a93b, 1.2);
+    rimLight.position.set(-30, 20, -25);
+    this.scene.add(rimLight);
+
+    // Center holographic point light
+    const centerGlow = new THREE.PointLight(0x00f0ff, 2.5, 60);
+    centerGlow.position.set(0, 4, 0);
+    this.scene.add(centerGlow);
   }
 
-  setupEnvironment() {
-    // 1. Hand-drawn Comic Ground Grid
+  setupAnimusEnvironment() {
+    // 1. Procedural Animus Infinite Memory Grid Floor
     const gridCanvas = document.createElement('canvas');
-    gridCanvas.width = 512;
-    gridCanvas.height = 512;
+    gridCanvas.width = 1024;
+    gridCanvas.height = 1024;
     const gctx = gridCanvas.getContext('2d');
-    gctx.fillStyle = '#faf5e8';
-    gctx.fillRect(0, 0, 512, 512);
 
-    // Crosshatch ink dots
-    gctx.fillStyle = '#d6c9af';
-    for (let x = 16; x < 512; x += 32) {
-      for (let y = 16; y < 512; y += 32) {
+    gctx.fillStyle = '#06090e';
+    gctx.fillRect(0, 0, 1024, 1024);
+
+    // High-tech Cyan coordinate grid
+    gctx.strokeStyle = 'rgba(0, 240, 255, 0.25)';
+    gctx.lineWidth = 1.5;
+    const step = 64;
+    for (let x = 0; x <= 1024; x += step) {
+      gctx.beginPath();
+      gctx.moveTo(x, 0);
+      gctx.lineTo(x, 1024);
+      gctx.stroke();
+    }
+    for (let y = 0; y <= 1024; y += step) {
+      gctx.beginPath();
+      gctx.moveTo(0, y);
+      gctx.lineTo(1024, y);
+      gctx.stroke();
+    }
+
+    // Secondary fine dot grid with Ben-Day comic dots
+    gctx.fillStyle = 'rgba(0, 240, 255, 0.4)';
+    for (let x = step / 2; x < 1024; x += step) {
+      for (let y = step / 2; y < 1024; y += step) {
         gctx.beginPath();
         gctx.arc(x, y, 2.5, 0, Math.PI * 2);
         gctx.fill();
       }
     }
-    // Sketchy concentric rings
-    gctx.strokeStyle = '#e2d5bd';
+
+    // Glowing Animus concentric memory rings
+    gctx.strokeStyle = 'rgba(0, 240, 255, 0.5)';
     gctx.lineWidth = 2;
+    [120, 240, 360, 480].forEach(r => {
+      gctx.beginPath();
+      gctx.arc(512, 512, r, 0, Math.PI * 2);
+      gctx.stroke();
+    });
+
+    // Renaissance Assassin compass rose markings in center
+    gctx.strokeStyle = 'rgba(229, 169, 59, 0.6)';
+    gctx.lineWidth = 3;
     gctx.beginPath();
-    gctx.arc(256, 256, 120, 0, Math.PI * 2);
-    gctx.arc(256, 256, 220, 0, Math.PI * 2);
+    gctx.arc(512, 512, 60, 0, Math.PI * 2);
+    gctx.stroke();
+    gctx.beginPath();
+    gctx.moveTo(512, 430); gctx.lineTo(512, 594);
+    gctx.moveTo(430, 512); gctx.lineTo(594, 512);
     gctx.stroke();
 
-    const gridTexture = new THREE.CanvasTexture(gridCanvas);
-    gridTexture.wrapS = THREE.RepeatWrapping;
-    gridTexture.wrapT = THREE.RepeatWrapping;
-    gridTexture.repeat.set(12, 12);
+    const gridTex = new THREE.CanvasTexture(gridCanvas);
+    gridTex.wrapS = THREE.RepeatWrapping;
+    gridTex.wrapT = THREE.RepeatWrapping;
+    gridTex.repeat.set(10, 10);
 
-    const groundGeo = new THREE.PlaneGeometry(160, 160);
-    const groundMat = new THREE.MeshStandardMaterial({
-      map: gridTexture,
-      roughness: 0.9,
-      metalness: 0.1
+    const floorGeo = new THREE.PlaneGeometry(180, 180);
+    const floorMat = new THREE.MeshStandardMaterial({
+      map: gridTex,
+      roughness: 0.85,
+      metalness: 0.3
     });
-    const ground = new THREE.Mesh(groundGeo, groundMat);
-    ground.rotation.x = -Math.PI / 2;
-    ground.position.y = -10;
-    ground.receiveShadow = true;
-    this.scene.add(ground);
+    const floor = new THREE.Mesh(floorGeo, floorMat);
+    floor.rotation.x = -Math.PI / 2;
+    floor.position.y = -10;
+    floor.receiveShadow = true;
+    this.scene.add(floor);
 
-    // 2. Comic Floating Particles (Hand-drawn crosses, rings, doodle stars)
-    const particleCount = 120;
-    const particleGroup = new THREE.Group();
-    const particleGeos = [
-      new THREE.RingGeometry(0.3, 0.45, 8),
-      new THREE.BoxGeometry(0.4, 0.4, 0.4),
-      new THREE.OctahedronGeometry(0.45, 0)
+    // 2. Animus DNA Data Stream (Double Helix of Floating Light)
+    const helixGroup = new THREE.Group();
+    const strandCount = 100;
+    const helixRadius = 14;
+    const helixHeight = 50;
+
+    const dotGeo = new THREE.SphereGeometry(0.18, 8, 8);
+    const cyanMat = new THREE.MeshBasicMaterial({ color: 0x00f0ff });
+    const amberMat = new THREE.MeshBasicMaterial({ color: 0xe5a93b });
+
+    for (let i = 0; i < strandCount; i++) {
+      const t = i / strandCount;
+      const angle = t * Math.PI * 8;
+      const y = t * helixHeight - 10;
+
+      // Strand A
+      const dotA = new THREE.Mesh(dotGeo, cyanMat);
+      dotA.position.set(Math.cos(angle) * helixRadius, y, Math.sin(angle) * helixRadius);
+      helixGroup.add(dotA);
+
+      // Strand B
+      const dotB = new THREE.Mesh(dotGeo, amberMat);
+      dotB.position.set(Math.cos(angle + Math.PI) * helixRadius, y, Math.sin(angle + Math.PI) * helixRadius);
+      helixGroup.add(dotB);
+    }
+    this.scene.add(helixGroup);
+    this.helixGroup = helixGroup;
+
+    // 3. Floating Animus Memory Dust & Doodle Crosshairs
+    const particleCount = 140;
+    const pGroup = new THREE.Group();
+    const pGeos = [
+      new THREE.OctahedronGeometry(0.35, 0),
+      new THREE.TetrahedronGeometry(0.3, 0),
+      new THREE.RingGeometry(0.2, 0.35, 6)
     ];
-    const particleMats = [
-      new THREE.MeshBasicMaterial({ color: 0x161311 }),
-      new THREE.MeshBasicMaterial({ color: 0xff5c8a }),
-      new THREE.MeshBasicMaterial({ color: 0xffd13b }),
-      new THREE.MeshBasicMaterial({ color: 0x00d2d3 })
+    const pMats = [
+      new THREE.MeshBasicMaterial({ color: 0x00f0ff }),
+      new THREE.MeshBasicMaterial({ color: 0xe5a93b }),
+      new THREE.MeshBasicMaterial({ color: 0xffffff })
     ];
 
+    this.floatingParticles = [];
     for (let i = 0; i < particleCount; i++) {
-      const geo = particleGeos[i % particleGeos.length];
-      const mat = particleMats[i % particleMats.length];
+      const geo = pGeos[Math.floor(Math.random() * pGeos.length)];
+      const mat = pMats[Math.floor(Math.random() * pMats.length)];
       const mesh = new THREE.Mesh(geo, mat);
+
       mesh.position.set(
         (Math.random() - 0.5) * 80,
-        Math.random() * 35 - 5,
+        (Math.random() - 0.5) * 35 + 5,
         (Math.random() - 0.5) * 80
       );
       mesh.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, 0);
-      mesh.scale.setScalar(0.7 + Math.random() * 0.8);
-      mesh.userData = {
-        speedY: (Math.random() * 0.015 + 0.005) * (Math.random() > 0.5 ? 1 : -1),
-        rotSpeed: Math.random() * 0.02 - 0.01
-      };
-      particleGroup.add(mesh);
+
+      pGroup.add(mesh);
+      this.floatingParticles.push({
+        mesh,
+        rotSpeed: (Math.random() - 0.5) * 0.02,
+        floatOffset: Math.random() * Math.PI * 2
+      });
     }
-    this.particleGroup = particleGroup;
-    this.scene.add(particleGroup);
-
-    // 3. Whimsical 3D Comic Clouds hovering around scene
-    this.createComicCloud(new THREE.Vector3(-28, 18, -25));
-    this.createComicCloud(new THREE.Vector3(26, 22, -20));
-    this.createComicCloud(new THREE.Vector3(0, 24, 25));
-  }
-
-  createComicCloud(pos) {
-    const cloudGroup = new THREE.Group();
-    const cloudMat = new THREE.MeshStandardMaterial({
-      color: 0xffffff,
-      roughness: 0.8,
-      metalness: 0.1
-    });
-
-    // Cloud puff spheres
-    const puffs = [
-      { r: 2.2, x: 0, y: 0, z: 0 },
-      { r: 1.7, x: -1.8, y: -0.2, z: 0 },
-      { r: 1.8, x: 1.8, y: -0.1, z: 0 },
-      { r: 1.3, x: -0.7, y: 1.2, z: 0.3 },
-      { r: 1.4, x: 0.9, y: 1.1, z: -0.2 }
-    ];
-
-    puffs.forEach(p => {
-      const sphere = new THREE.Mesh(new THREE.SphereGeometry(p.r, 12, 10), cloudMat);
-      sphere.position.set(p.x, p.y, p.z);
-      sphere.castShadow = true;
-
-      // Inverted ink outline for comic look
-      const outlineGeo = new THREE.SphereGeometry(p.r * 1.06, 10, 8);
-      const outlineMat = new THREE.MeshBasicMaterial({ color: 0x161311, side: THREE.BackSide });
-      const outline = new THREE.Mesh(outlineGeo, outlineMat);
-      sphere.add(outline);
-
-      cloudGroup.add(sphere);
-    });
-
-    cloudGroup.position.copy(pos);
-    this.scene.add(cloudGroup);
+    this.scene.add(pGroup);
   }
 
   /**
-   * Generates procedural canvas textures for a post notebook:
-   * Front cover (title, stamps, halftone dots, doodle badge), spine, and lined pages
+   * Generates procedural canvas textures:
+   * 1. Animus Cyber-Doodle Shard Texture (Cyan/Ink comic aesthetic)
+   * 2. Historical Codex Parchment Texture (Leonardo Da Vinci sketch manuscript)
    */
-  generateNotebookTextures(post) {
-    // 1. FRONT COVER CANVAS
-    const coverCanvas = document.createElement('canvas');
-    coverCanvas.width = 512;
-    coverCanvas.height = 720;
-    const ctx = coverCanvas.getContext('2d');
+  generateFragmentTextures(post) {
+    // -------------------------------------------------------------
+    // A. ANIMUS SHARD TEXTURE (Cyber Void + Comic Doodle Hatching)
+    // -------------------------------------------------------------
+    const shardCanvas = document.createElement('canvas');
+    shardCanvas.width = 512;
+    shardCanvas.height = 720;
+    const sctx = shardCanvas.getContext('2d');
 
-    // Background paper color
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0, 0, 512, 720);
+    // Dark cyber-void background with cyan perimeter
+    sctx.fillStyle = '#0a0f18';
+    sctx.fillRect(0, 0, 512, 720);
 
-    // Accent header band
-    ctx.fillStyle = post.accentColor || '#ffd13b';
-    ctx.fillRect(0, 0, 512, 140);
-
-    // Halftone dots in header
-    ctx.fillStyle = 'rgba(22, 19, 17, 0.12)';
-    for (let x = 12; x < 512; x += 16) {
-      for (let y = 12; y < 140; y += 16) {
-        ctx.beginPath();
-        ctx.arc(x, y, 3, 0, Math.PI * 2);
-        ctx.fill();
+    // Halftone Ben-Day dot pattern
+    sctx.fillStyle = 'rgba(0, 240, 255, 0.12)';
+    for (let x = 12; x < 512; x += 18) {
+      for (let y = 12; y < 720; y += 18) {
+        sctx.beginPath();
+        sctx.arc(x, y, 2.2, 0, Math.PI * 2);
+        sctx.fill();
       }
     }
 
-    // Bold ink comic border
-    ctx.strokeStyle = '#161311';
-    ctx.lineWidth = 14;
-    ctx.strokeRect(7, 7, 498, 706);
+    // Heavy Ink Border with Tech Brackets
+    sctx.strokeStyle = '#00f0ff';
+    sctx.lineWidth = 6;
+    sctx.strokeRect(16, 16, 480, 688);
 
-    // Category banner badge
-    ctx.fillStyle = '#161311';
-    ctx.fillRect(36, 115, 160, 42);
-    ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 22px Outfit, sans-serif';
-    ctx.fillText(post.category.toUpperCase(), 50, 144);
+    sctx.strokeStyle = '#e5a93b';
+    sctx.lineWidth = 3;
+    sctx.strokeRect(26, 26, 460, 668);
 
-    // Doodle Motif Stamp
-    ctx.font = '70px serif';
-    ctx.textAlign = 'center';
-    ctx.fillText(post.stamp || '🎨', 410, 100);
+    // Assassin Brotherhood Crest Doodle Watermark
+    sctx.strokeStyle = 'rgba(0, 240, 255, 0.25)';
+    sctx.lineWidth = 4;
+    sctx.beginPath();
+    sctx.moveTo(256, 160);
+    sctx.lineTo(170, 360);
+    sctx.lineTo(210, 360);
+    sctx.lineTo(256, 240);
+    sctx.lineTo(302, 360);
+    sctx.lineTo(342, 360);
+    sctx.closePath();
+    sctx.stroke();
 
-    // Ruled notebook lines
-    ctx.strokeStyle = 'rgba(22, 19, 17, 0.15)';
-    ctx.lineWidth = 2;
-    for (let y = 200; y < 650; y += 38) {
-      ctx.beginPath();
-      ctx.moveTo(35, y);
-      ctx.lineTo(477, y);
-      ctx.stroke();
-    }
+    // Category / Memory Sequence Pill
+    sctx.fillStyle = '#00f0ff';
+    sctx.fillRect(45, 55, 180, 38);
+    sctx.fillStyle = '#06090e';
+    sctx.font = 'bold 20px "Share Tech Mono", monospace';
+    sctx.fillText(`// ${post.category}`, 60, 81);
 
     // Title (multi-line wrapped)
-    ctx.fillStyle = '#161311';
-    ctx.font = 'bold 36px Bangers, cursive, sans-serif';
-    ctx.textAlign = 'left';
+    sctx.fillStyle = '#ffffff';
+    sctx.font = 'bold 36px "Cinzel", serif';
+    sctx.textAlign = 'left';
 
     const words = post.title.split(' ');
     let line = '';
-    let curY = 240;
+    let curY = 440;
     for (let n = 0; n < words.length; n++) {
       const testLine = line + words[n] + ' ';
-      const metrics = ctx.measureText(testLine);
+      const metrics = sctx.measureText(testLine);
       if (metrics.width > 420 && n > 0) {
-        ctx.fillText(line, 45, curY);
+        sctx.fillText(line, 48, curY);
         line = words[n] + ' ';
-        curY += 44;
+        curY += 46;
       } else {
         line = testLine;
       }
     }
-    ctx.fillText(line, 45, curY);
+    sctx.fillText(line, 48, curY);
 
-    // Author & Reading Time footer
-    ctx.fillStyle = '#161311';
-    ctx.font = 'bold 20px Kalam, cursive, sans-serif';
-    ctx.fillText(`✎ ${post.author}`, 45, 620);
-    ctx.font = '16px Outfit, sans-serif';
-    ctx.fillStyle = '#666666';
-    ctx.fillText(`⏱ ${post.readTime} • ${post.likes} Likes`, 45, 650);
+    // Scribe / Author & Stamp
+    sctx.fillStyle = '#e5a93b';
+    sctx.font = 'bold 22px "Kalam", cursive';
+    sctx.fillText(`✍ ${post.author}`, 48, curY + 60);
 
-    // Cute decorative comic sticker
-    ctx.fillStyle = '#ffd13b';
-    ctx.strokeStyle = '#161311';
-    ctx.lineWidth = 4;
-    ctx.beginPath();
-    ctx.arc(430, 615, 34, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
-    ctx.fillStyle = '#161311';
-    ctx.font = 'bold 15px Bangers, cursive';
-    ctx.textAlign = 'center';
-    ctx.fillText('READ ME!', 430, 620);
+    sctx.font = '72px serif';
+    sctx.textAlign = 'center';
+    sctx.fillText(post.stamp || '🦅', 420, 110);
 
-    // 2. SPINE TEXTURE
-    const spineCanvas = document.createElement('canvas');
-    spineCanvas.width = 128;
-    spineCanvas.height = 720;
-    const sctx = spineCanvas.getContext('2d');
-    sctx.fillStyle = post.accentColor || '#ffd13b';
-    sctx.fillRect(0, 0, 128, 720);
-    sctx.strokeStyle = '#161311';
-    sctx.lineWidth = 8;
-    sctx.strokeRect(4, 4, 120, 712);
-    // Stitching / tape lines
-    sctx.fillStyle = '#161311';
-    for (let y = 30; y < 700; y += 40) {
-      sctx.fillRect(52, y, 24, 6);
+    // -------------------------------------------------------------
+    // B. HISTORICAL CODEX PARCHMENT TEXTURE (Leonardo Da Vinci Folio)
+    // -------------------------------------------------------------
+    const codexCanvas = document.createElement('canvas');
+    codexCanvas.width = 512;
+    codexCanvas.height = 720;
+    const cctx = codexCanvas.getContext('2d');
+
+    // Weathered parchment base
+    cctx.fillStyle = '#f7f1df';
+    cctx.fillRect(0, 0, 512, 720);
+
+    // Sepia aged paper vignettes
+    const radGrad = cctx.createRadialGradient(256, 360, 100, 256, 360, 360);
+    radGrad.addColorStop(0, 'rgba(247, 241, 223, 0)');
+    radGrad.addColorStop(1, 'rgba(180, 140, 80, 0.45)');
+    cctx.fillStyle = radGrad;
+    cctx.fillRect(0, 0, 512, 720);
+
+    // Hand-drawn double ink margin lines
+    cctx.strokeStyle = '#1c150e';
+    cctx.lineWidth = 4;
+    cctx.strokeRect(20, 20, 472, 680);
+    cctx.lineWidth = 1.5;
+    cctx.strokeRect(28, 28, 456, 664);
+
+    // Ruled manuscript sketch lines
+    cctx.strokeStyle = 'rgba(75, 56, 39, 0.2)';
+    cctx.lineWidth = 1.2;
+    for (let y = 140; y < 650; y += 32) {
+      cctx.beginPath();
+      cctx.moveTo(35, y);
+      cctx.lineTo(475, y);
+      cctx.stroke();
     }
 
-    // 3. PAGES EDGE TEXTURE
-    const pagesCanvas = document.createElement('canvas');
-    pagesCanvas.width = 128;
-    pagesCanvas.height = 512;
-    const pctx = pagesCanvas.getContext('2d');
-    pctx.fillStyle = '#faf5e8';
-    pctx.fillRect(0, 0, 128, 512);
-    pctx.strokeStyle = 'rgba(22, 19, 17, 0.2)';
-    pctx.lineWidth = 1;
-    for (let y = 0; y < 512; y += 4) {
-      pctx.beginPath();
-      pctx.moveTo(0, y);
-      pctx.lineTo(128, y);
-      pctx.stroke();
-    }
+    // Leonardo's Hand-drawn Flying Machine / Compass doodle sketch in center
+    cctx.strokeStyle = '#4b3827';
+    cctx.lineWidth = 2;
+    cctx.beginPath();
+    cctx.arc(256, 260, 70, 0, Math.PI * 2);
+    cctx.moveTo(256, 170); cctx.lineTo(256, 350);
+    cctx.moveTo(170, 260); cctx.lineTo(342, 260);
+    cctx.stroke();
 
-    const coverTex = new THREE.CanvasTexture(coverCanvas);
-    const spineTex = new THREE.CanvasTexture(spineCanvas);
-    const pagesTex = new THREE.CanvasTexture(pagesCanvas);
+    // Mirror-script Latin / Italian doodle text
+    cctx.fillStyle = 'rgba(28, 21, 14, 0.85)';
+    cctx.font = 'italic 16px "Kalam", cursive';
+    cctx.fillText('~ Cogito ergo virtus in tenebris ~', 130, 380);
 
-    return { coverTex, spineTex, pagesTex };
+    // Red Wax Brotherhood Seal
+    cctx.fillStyle = '#9b2226';
+    cctx.beginPath();
+    cctx.arc(430, 620, 36, 0, Math.PI * 2);
+    cctx.fill();
+    cctx.strokeStyle = '#1c150e';
+    cctx.lineWidth = 3;
+    cctx.stroke();
+    cctx.fillStyle = '#ffffff';
+    cctx.font = 'bold 24px "Cinzel", serif';
+    cctx.textAlign = 'center';
+    cctx.fillText('⚜', 430, 628);
+
+    // Title on Codex
+    cctx.fillStyle = '#1c150e';
+    cctx.font = 'bold 30px "Cinzel", serif';
+    cctx.textAlign = 'left';
+    cctx.fillText(post.title.substring(0, 26) + (post.title.length > 26 ? '...' : ''), 45, 90);
+
+    const shardTex = new THREE.CanvasTexture(shardCanvas);
+    const codexTex = new THREE.CanvasTexture(codexCanvas);
+
+    return { shardTex, codexTex };
   }
 
   /**
-   * Creates a 3D Comic Notebook mesh for a post
+   * Creates a 3D Animus Memory Fragment mesh
    */
   createPostMesh(post, position, index) {
-    const { coverTex, spineTex, pagesTex } = this.generateNotebookTextures(post);
+    const { shardTex, codexTex } = this.generateFragmentTextures(post);
 
-    // Box dimensions: Width: 4.8, Height: 6.8, Depth: 1.1
-    const bookGeo = new THREE.BoxGeometry(4.8, 6.8, 1.1);
+    // Faceted Memory Fragment Geometry (Box representing codex shard)
+    const bookGeo = new THREE.BoxGeometry(4.8, 6.8, 1.0);
 
-    // Materials for 6 faces: Right(Pages), Left(Spine), Top(Pages), Bottom(Pages), Front(Cover), Back(Plain)
-    const materials = [
-      new THREE.MeshStandardMaterial({ map: pagesTex, roughness: 0.8 }), // Right
-      new THREE.MeshStandardMaterial({ map: spineTex, roughness: 0.6 }), // Left / Spine
-      new THREE.MeshStandardMaterial({ map: pagesTex, roughness: 0.8 }), // Top
-      new THREE.MeshStandardMaterial({ map: pagesTex, roughness: 0.8 }), // Bottom
-      new THREE.MeshStandardMaterial({ map: coverTex, roughness: 0.4 }), // Front cover
-      new THREE.MeshStandardMaterial({ color: 0xf4ebd0, roughness: 0.7 }) // Back cover
+    // Shard Materials (Active Animus Cyber style)
+    const shardMaterials = [
+      new THREE.MeshStandardMaterial({ color: 0x0f1726, roughness: 0.5, metalness: 0.8 }), // Right
+      new THREE.MeshStandardMaterial({ color: 0x00f0ff, roughness: 0.3, metalness: 0.9, emissive: 0x00f0ff, emissiveIntensity: 0.2 }), // Spine
+      new THREE.MeshStandardMaterial({ color: 0x0f1726, roughness: 0.5 }), // Top
+      new THREE.MeshStandardMaterial({ color: 0x0f1726, roughness: 0.5 }), // Bottom
+      new THREE.MeshStandardMaterial({ map: shardTex, roughness: 0.4, metalness: 0.2 }), // Front (Shard)
+      new THREE.MeshStandardMaterial({ color: 0x070a0f, roughness: 0.8 })  // Back
     ];
 
-    const bookMesh = new THREE.Mesh(bookGeo, materials);
+    // Codex Materials (Unfolded Historical Manuscript style)
+    const codexMaterials = [
+      new THREE.MeshStandardMaterial({ color: 0xecdcb9, roughness: 0.9 }),
+      new THREE.MeshStandardMaterial({ color: 0x4b3827, roughness: 0.8 }),
+      new THREE.MeshStandardMaterial({ color: 0xecdcb9, roughness: 0.9 }),
+      new THREE.MeshStandardMaterial({ color: 0xecdcb9, roughness: 0.9 }),
+      new THREE.MeshStandardMaterial({ map: codexTex, roughness: 0.9 }),
+      new THREE.MeshStandardMaterial({ color: 0xe8dbba, roughness: 0.9 })
+    ];
+
+    const bookMesh = new THREE.Mesh(bookGeo, shardMaterials);
     bookMesh.castShadow = true;
     bookMesh.receiveShadow = true;
 
-    // Hand-drawn Inverted-Hull Comic Outline
-    const outlineGeo = new THREE.BoxGeometry(5.08, 7.08, 1.28);
+    // Heavy-ink Cel Outline (Inverted Hull)
+    const outlineGeo = new THREE.BoxGeometry(5.08, 7.08, 1.25);
     const outlineMat = new THREE.MeshBasicMaterial({
-      color: 0x161311,
-      side: THREE.BackSide
+      color: 0x00f0ff,
+      side: THREE.BackSide,
+      wireframe: false
     });
     const outlineMesh = new THREE.Mesh(outlineGeo, outlineMat);
     bookMesh.add(outlineMesh);
+    bookMesh.outlineMesh = outlineMesh;
 
-    // Floating Speech Bubble / Action Badge above post
+    // Floating Animus Crest / Category Hologram Badge above fragment
     const badgeGeo = new THREE.PlaneGeometry(1.6, 1.6);
     const badgeCanvas = document.createElement('canvas');
     badgeCanvas.width = 128;
     badgeCanvas.height = 128;
     const bctx = badgeCanvas.getContext('2d');
-    bctx.fillStyle = '#ffd13b';
+    bctx.fillStyle = 'rgba(10, 15, 24, 0.9)';
     bctx.beginPath();
     bctx.arc(64, 64, 58, 0, Math.PI * 2);
     bctx.fill();
-    bctx.strokeStyle = '#161311';
-    bctx.lineWidth = 8;
+    bctx.strokeStyle = '#00f0ff';
+    bctx.lineWidth = 6;
     bctx.stroke();
     bctx.font = '60px serif';
     bctx.textAlign = 'center';
-    bctx.fillText(post.stamp || '✨', 64, 85);
+    bctx.fillText(post.stamp || '🦅', 64, 85);
 
     const badgeTex = new THREE.CanvasTexture(badgeCanvas);
     const badgeMat = new THREE.MeshBasicMaterial({
@@ -854,209 +972,301 @@ class ThreeDoodleScene {
       side: THREE.DoubleSide
     });
     const badgeMesh = new THREE.Mesh(badgeGeo, badgeMat);
-    badgeMesh.position.set(2.0, 3.7, 0.4);
+    badgeMesh.position.y = 4.8;
     bookMesh.add(badgeMesh);
+    bookMesh.badgeMesh = badgeMesh;
 
-    // Set initial organic position and slight tilt
+    // Position & Orientation
     bookMesh.position.copy(position);
-    bookMesh.rotation.y = (Math.random() - 0.5) * 0.4;
-    bookMesh.rotation.z = (Math.random() - 0.5) * 0.15;
+    const rotY = (index % 2 === 0 ? 0.25 : -0.25) + (Math.random() - 0.5) * 0.15;
+    const rotZ = (Math.random() - 0.5) * 0.08;
+    bookMesh.rotation.set(0, rotY, rotZ);
 
-    // Link post data and animation metadata
     bookMesh.userData = {
-      isPost: true,
-      postId: post.id,
+      id: post.id,
       postData: post,
-      originalPos: bookMesh.position.clone(),
-      originalRot: bookMesh.rotation.clone(),
-      floatOffset: index * 0.9,
-      floatSpeed: 1.2 + Math.random() * 0.5,
-      outlineMesh: outlineMesh
+      originalPos: position.clone(),
+      originalRot: new THREE.Euler(0, rotY, rotZ),
+      bobPhase: index * 1.1,
+      codexMaterials,
+      shardMaterials,
+      isCodexMode: false
     };
 
     this.scene.add(bookMesh);
-    this.postMeshes.push(bookMesh);
-
     return bookMesh;
   }
 
   /**
-   * Spawns all posts in an organic celestial ring
+   * Populate 3D Scene with initial post fragments arranged in an orbital Animus corridor
    */
-  populatePosts(posts) {
-    // Clear existing
-    this.postMeshes.forEach(p => this.scene.remove(p));
+  loadPosts(posts) {
+    // Clear existing meshes
+    this.postMeshes.forEach(item => {
+      this.scene.remove(item.mesh);
+    });
     this.postMeshes = [];
 
     const total = posts.length;
-    const radius = 17;
-
-    posts.forEach((post, i) => {
-      const angle = (i / total) * Math.PI * 2;
-      const x = Math.cos(angle) * radius + (Math.random() - 0.5) * 2;
-      const z = Math.sin(angle) * (radius * 0.9) + (Math.random() - 0.5) * 2;
-      const y = Math.sin(i * 1.8) * 3 + 2;
+    posts.forEach((post, index) => {
+      // Cylindrical / orbital corridor formation in the void
+      const angle = (index / total) * Math.PI * 2;
+      const radius = 18 + (index % 2) * 5;
+      const x = Math.sin(angle) * radius;
+      const z = Math.cos(angle) * radius;
+      const y = (index % 3 - 1) * 4.5 + (Math.random() - 0.5) * 2;
 
       const pos = new THREE.Vector3(x, y, z);
-      const mesh = this.createPostMesh(post, pos, i);
+      const mesh = this.createPostMesh(post, pos, index);
 
-      // Face roughly towards the center with slight tilt
-      mesh.lookAt(0, y * 0.5, 0);
-      mesh.rotateY(Math.PI); // Orient front cover facing viewer
-      mesh.userData.originalRot = mesh.rotation.clone();
+      this.postMeshes.push({
+        mesh,
+        postData: post,
+        originalPos: pos.clone(),
+        originalRot: mesh.userData.originalRot.clone()
+      });
     });
   }
 
   /**
-   * Add a single newly published post dynamically into the 3D scene
+   * Dynamically spawns a new post fragment into the Animus Void with particle burst
    */
   addNewPost(post) {
-    // Spawn right in front of the camera view
     const angle = Math.random() * Math.PI * 2;
-    const radius = 15;
-    const pos = new THREE.Vector3(
-      Math.cos(angle) * radius,
-      3 + Math.random() * 2,
-      Math.sin(angle) * radius
-    );
+    const radius = 17;
+    const x = Math.sin(angle) * radius;
+    const z = Math.cos(angle) * radius;
+    const y = 0;
+
+    const pos = new THREE.Vector3(x, y, z);
     const mesh = this.createPostMesh(post, pos, this.postMeshes.length);
-    mesh.lookAt(0, pos.y, 0);
-    mesh.rotateY(Math.PI);
-    mesh.userData.originalRot = mesh.rotation.clone();
 
-    // Comic entrance scale pop
-    mesh.scale.set(0.01, 0.01, 0.01);
-    const enterTween = () => {
-      let progress = 0;
-      const interval = setInterval(() => {
-        progress += 0.08;
-        const s = Math.min(1, Math.sin(progress * Math.PI * 0.5) * 1.15);
-        mesh.scale.set(s, s, s);
-        if (progress >= 1.2) {
-          mesh.scale.set(1, 1, 1);
-          clearInterval(interval);
-        }
-      }, 16);
-    };
-    enterTween();
-    soundFX.playChime();
-  }
-
-  /**
-   * Filter posts visible in 3D by category
-   */
-  filterByCategory(category) {
-    this.postMeshes.forEach(mesh => {
-      const match = category === 'ALL' || mesh.userData.postData.category === category;
-      mesh.visible = match;
+    this.postMeshes.unshift({
+      mesh,
+      postData: post,
+      originalPos: pos.clone(),
+      originalRot: mesh.userData.originalRot.clone()
     });
+
+    // Particle burst at spawn position
+    this.createSpawnBurst(pos);
+
+    // Focus camera onto newly synchronized memory
+    this.focusPost(mesh);
+  }
+
+  createSpawnBurst(position) {
+    soundFX.playSync();
+    const burstGroup = new THREE.Group();
+    const count = 35;
+    const geo = new THREE.OctahedronGeometry(0.3, 0);
+    const mat = new THREE.MeshBasicMaterial({ color: 0x00f0ff });
+
+    for (let i = 0; i < count; i++) {
+      const p = new THREE.Mesh(geo, mat);
+      p.position.copy(position);
+      p.userData = {
+        vel: new THREE.Vector3(
+          (Math.random() - 0.5) * 8,
+          (Math.random() - 0.5) * 8,
+          (Math.random() - 0.5) * 8
+        )
+      };
+      burstGroup.add(p);
+    }
+    this.scene.add(burstGroup);
+
+    let life = 0;
+    const animateBurst = () => {
+      life += 0.03;
+      burstGroup.children.forEach(p => {
+        p.position.addScaledVector(p.userData.vel, 0.03);
+        p.scale.multiplyScalar(0.95);
+      });
+      if (life < 1.0) {
+        requestAnimationFrame(animateBurst);
+      } else {
+        this.scene.remove(burstGroup);
+      }
+    };
+    animateBurst();
   }
 
   /**
-   * Raycasting on pointer move for hover interactions
+   * Smoothly transitions the 3D fragment between Animus Cyber Shard and Historical Codex
+   */
+  transitionToCodex(mesh, toCodex = true) {
+    if (!mesh || !mesh.userData) return;
+    mesh.userData.isCodexMode = toCodex;
+    mesh.material = toCodex ? mesh.userData.codexMaterials : mesh.userData.shardMaterials;
+
+    if (mesh.outlineMesh) {
+      mesh.outlineMesh.material.color.setHex(toCodex ? 0x1c150e : 0x00f0ff);
+    }
+    if (toCodex) {
+      soundFX.playParchmentRustle();
+    }
+  }
+
+  /**
+   * Raycasting & Pointer Movement
    */
   onPointerMove(event) {
     const rect = this.renderer.domElement.getBoundingClientRect();
     this.mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
     this.mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
 
+    this.checkHover(event.clientX, event.clientY);
+  }
+
+  checkHover(clientX, clientY) {
+    if (this.cameraTween.active) return;
+
     this.raycaster.setFromCamera(this.mouse, this.camera);
-    const intersects = this.raycaster.intersectObjects(this.postMeshes, false);
+    const interactiveMeshes = this.postMeshes
+      .filter(item => item.mesh.visible)
+      .map(item => item.mesh);
+
+    const intersects = this.raycaster.intersectObjects(interactiveMeshes, false);
 
     if (intersects.length > 0) {
-      const hit = intersects[0].object;
-      if (this.hoveredObject !== hit) {
-        // Unhover previous
-        if (this.hoveredObject) {
-          this.hoveredObject.userData.outlineMesh.material.color.setHex(0x161311);
+      const hitMesh = intersects[0].object;
+      if (this.hoveredObject !== hitMesh) {
+        // Reset previous hover
+        if (this.hoveredObject && this.hoveredObject !== this.selectedPostMesh) {
+          this.setHoverState(this.hoveredObject, false);
         }
-        this.hoveredObject = hit;
-        // Glow comic outline
-        this.hoveredObject.userData.outlineMesh.material.color.setHex(0xff5c8a);
-        this.container.style.cursor = 'pointer';
-        soundFX.playPop();
+        this.hoveredObject = hitMesh;
+        this.setHoverState(hitMesh, true);
+        soundFX.playGlitch();
       }
-      if (this.onPostHover) {
-        this.onPostHover(hit.userData.postData, event.clientX, event.clientY);
-      }
+      this.onPostHover(hitMesh.userData.postData, clientX, clientY);
+      this.renderer.domElement.style.cursor = 'pointer';
     } else {
-      if (this.hoveredObject) {
-        this.hoveredObject.userData.outlineMesh.material.color.setHex(0x161311);
-        this.hoveredObject = null;
-        this.container.style.cursor = 'grab';
-        if (this.onPostHover) {
-          this.onPostHover(null);
-        }
+      if (this.hoveredObject && this.hoveredObject !== this.selectedPostMesh) {
+        this.setHoverState(this.hoveredObject, false);
       }
+      this.hoveredObject = null;
+      this.onPostHover(null, 0, 0);
+      this.renderer.domElement.style.cursor = 'grab';
     }
   }
 
-  /**
-   * Raycasting on click to select post & trigger smooth camera focus
-   */
+  setHoverState(mesh, isHovered) {
+    if (!mesh || !mesh.outlineMesh) return;
+    if (isHovered) {
+      mesh.outlineMesh.scale.set(1.08, 1.08, 1.15);
+      mesh.outlineMesh.material.color.setHex(0xe5a93b); // Glowing Amber on hover
+    } else {
+      mesh.outlineMesh.scale.set(1.0, 1.0, 1.0);
+      mesh.outlineMesh.material.color.setHex(mesh.userData.isCodexMode ? 0x1c150e : 0x00f0ff);
+    }
+  }
+
   onPointerClick(event) {
-    if (this.isCameraAnimating) return;
+    if (this.cameraTween.active) return;
 
     this.raycaster.setFromCamera(this.mouse, this.camera);
-    const intersects = this.raycaster.intersectObjects(this.postMeshes, false);
+    const interactiveMeshes = this.postMeshes
+      .filter(item => item.mesh.visible)
+      .map(item => item.mesh);
+
+    const intersects = this.raycaster.intersectObjects(interactiveMeshes, false);
 
     if (intersects.length > 0) {
-      const postMesh = intersects[0].object;
-      this.selectedPostMesh = postMesh;
-      soundFX.playWhoosh();
+      const clickedMesh = intersects[0].object;
+      this.focusPost(clickedMesh);
+    }
+  }
 
-      // Animate Camera to focus on this post
-      this.focusOnPost(postMesh);
+  /**
+   * Tight camera focus animation onto fragment & visual transition to historical Codex page
+   */
+  focusPost(mesh) {
+    this.selectedPostMesh = mesh;
+    soundFX.playSync();
 
-      if (this.onPostSelected) {
-        this.onPostSelected(postMesh.userData.postData);
+    // Transition 3D texture to historical parchment Codex
+    this.transitionToCodex(mesh, true);
+
+    // Calculate camera target directly in front of the fragment
+    const meshPos = mesh.position.clone();
+    const forwardVec = new THREE.Vector3(0, 0, 1).applyEuler(mesh.rotation);
+    const cameraTargetPos = meshPos.clone().add(forwardVec.clone().multiplyScalar(9.5));
+    cameraTargetPos.y += 0.4;
+
+    this.animateCamera(cameraTargetPos, meshPos, 1200, () => {
+      // Trigger DOM Reading Overlay
+      this.onPostSelected(mesh.userData.postData);
+    });
+  }
+
+  /**
+   * Reset Camera to overview perspective and revert fragment to Animus Shard
+   */
+  resetView(onComplete = null) {
+    if (this.selectedPostMesh) {
+      this.transitionToCodex(this.selectedPostMesh, false);
+      this.setHoverState(this.selectedPostMesh, false);
+      this.selectedPostMesh = null;
+    }
+
+    this.animateCamera(this.defaultCameraPos, this.defaultTarget, 1000, onComplete);
+  }
+
+  animateCamera(targetPos, targetLookAt, duration = 1100, onComplete = null) {
+    this.cameraTween = {
+      active: true,
+      startTime: performance.now(),
+      duration,
+      startPos: this.camera.position.clone(),
+      targetPos: targetPos.clone(),
+      startLookAt: this.controls.target.clone(),
+      targetLookAt: targetLookAt.clone(),
+      onComplete
+    };
+    this.controls.enabled = false;
+  }
+
+  updateCameraTween(now) {
+    if (!this.cameraTween.active) return;
+
+    const elapsed = now - this.cameraTween.startTime;
+    const progress = Math.min(elapsed / this.cameraTween.duration, 1.0);
+    // Smooth cubic ease out
+    const ease = 1 - Math.pow(1 - progress, 3);
+
+    this.camera.position.lerpVectors(this.cameraTween.startPos, this.cameraTween.targetPos, ease);
+    this.controls.target.lerpVectors(this.cameraTween.startLookAt, this.cameraTween.targetLookAt, ease);
+
+    if (progress >= 1.0) {
+      this.cameraTween.active = false;
+      this.controls.enabled = true;
+      if (this.cameraTween.onComplete) {
+        this.cameraTween.onComplete();
       }
     }
   }
 
   /**
-   * Smoothly animates camera to frame the selected 3D post
+   * Filter & Search
    */
-  focusOnPost(mesh) {
-    this.isCameraAnimating = true;
-    this.controls.enabled = false;
+  applyFilterAndSearch(category, query) {
+    this.activeFilter = category;
+    this.searchQuery = (query || '').toLowerCase().trim();
 
-    // Calculate position in front of the post
-    const targetLookAt = mesh.position.clone();
-    
-    // Normal vector pointing outwards from book front cover
-    const offset = new THREE.Vector3(0, 0.5, 9).applyQuaternion(mesh.quaternion);
-    const targetCameraPos = mesh.position.clone().add(offset);
+    this.postMeshes.forEach(item => {
+      const p = item.postData;
+      const matchCat = (category === 'ALL' || p.category.toUpperCase() === category.toUpperCase());
+      const matchQuery = !this.searchQuery ||
+        p.title.toLowerCase().includes(this.searchQuery) ||
+        p.content.toLowerCase().includes(this.searchQuery) ||
+        p.author.toLowerCase().includes(this.searchQuery) ||
+        (p.tags && p.tags.some(t => t.toLowerCase().includes(this.searchQuery)));
 
-    this.cameraTween = {
-      active: true,
-      startTime: performance.now(),
-      duration: 1000,
-      startPos: this.camera.position.clone(),
-      targetPos: targetCameraPos,
-      startLookAt: this.controls.target.clone(),
-      targetLookAt: targetLookAt
-    };
-  }
-
-  /**
-   * Smoothly reset camera back to wide overview
-   */
-  resetCameraOverview() {
-    this.isCameraAnimating = true;
-    this.controls.enabled = false;
-    this.selectedPostMesh = null;
-    soundFX.playWhoosh();
-
-    this.cameraTween = {
-      active: true,
-      startTime: performance.now(),
-      duration: 1200,
-      startPos: this.camera.position.clone(),
-      targetPos: this.defaultCameraPos.clone(),
-      startLookAt: this.controls.target.clone(),
-      targetLookAt: this.defaultTarget.clone()
-    };
+      const isVisible = matchCat && matchQuery;
+      item.mesh.visible = isVisible;
+    });
   }
 
   onWindowResize() {
@@ -1067,55 +1277,55 @@ class ThreeDoodleScene {
     this.renderer.setSize(width, height);
   }
 
+  /**
+   * Main Render Loop
+   */
   animate() {
     requestAnimationFrame(() => this.animate());
 
+    const delta = this.clock.getDelta();
     const elapsedTime = this.clock.getElapsedTime();
+    const now = performance.now();
 
-    // 1. Handle Camera Tween Animation
-    if (this.cameraTween.active) {
-      const elapsed = performance.now() - this.cameraTween.startTime;
-      const progress = Math.min(1, elapsed / this.cameraTween.duration);
-      
-      // Smooth cubic ease-out
-      const ease = 1 - Math.pow(1 - progress, 3);
+    // 1. Camera Tweening
+    this.updateCameraTween(now);
 
-      this.camera.position.lerpVectors(this.cameraTween.startPos, this.cameraTween.targetPos, ease);
-      this.controls.target.lerpVectors(this.cameraTween.startLookAt, this.cameraTween.targetLookAt, ease);
-
-      if (progress >= 1) {
-        this.cameraTween.active = false;
-        this.isCameraAnimating = false;
-        this.controls.enabled = true;
-      }
-    } else {
+    // 2. Controls update
+    if (this.controls.enabled) {
       this.controls.update();
     }
 
-    // 2. Animate Floating 3D Post Meshes (Gentle Organic Bobbing & Sway)
-    this.postMeshes.forEach(mesh => {
-      if (mesh === this.selectedPostMesh) {
-        // Keep selected mesh facing camera steadily
-        return;
-      }
-      const u = mesh.userData;
-      const bob = Math.sin(elapsedTime * u.floatSpeed + u.floatOffset) * 0.45;
-      mesh.position.y = u.originalPos.y + bob;
+    // 3. DNA Helix slow rotation
+    if (this.helixGroup) {
+      this.helixGroup.rotation.y = elapsedTime * 0.15;
+    }
 
-      // Slight comic wobble
-      mesh.rotation.z = u.originalRot.z + Math.sin(elapsedTime * 0.8 + u.floatOffset) * 0.03;
-    });
-
-    // 3. Animate Background Comic Particles
-    if (this.particleGroup) {
-      this.particleGroup.children.forEach(p => {
-        p.position.y += p.userData.speedY;
-        p.rotation.x += p.userData.rotSpeed;
-        p.rotation.y += p.userData.rotSpeed;
-        if (p.position.y > 32) p.position.y = -5;
-        if (p.position.y < -5) p.position.y = 32;
+    // 4. Floating Dust Particles motion
+    if (this.floatingParticles) {
+      this.floatingParticles.forEach(p => {
+        p.mesh.rotation.x += p.rotSpeed;
+        p.mesh.rotation.y += p.rotSpeed;
+        p.mesh.position.y += Math.sin(elapsedTime * 1.5 + p.floatOffset) * 0.008;
       });
     }
+
+    // 5. Memory Fragments Floating Bobbing Animation
+    this.postMeshes.forEach(item => {
+      const mesh = item.mesh;
+      if (!mesh.visible) return;
+
+      // Gentle floating bob unless selected in tight focus
+      if (mesh !== this.selectedPostMesh) {
+        const phase = mesh.userData.bobPhase;
+        mesh.position.y = item.originalPos.y + Math.sin(elapsedTime * 1.2 + phase) * 0.35;
+        mesh.rotation.y = item.originalRot.y + Math.sin(elapsedTime * 0.8 + phase) * 0.04;
+      }
+
+      // Billboard the holographic badge towards camera
+      if (mesh.badgeMesh) {
+        mesh.badgeMesh.quaternion.copy(this.camera.quaternion);
+      }
+    });
 
     this.renderer.render(this.scene, this.camera);
   }
@@ -1123,482 +1333,655 @@ class ThreeDoodleScene {
 
 
 /* ==========================================================================
-   5. UI CONTROLLER (DOM Manipulation & Event Binding)
+   5. UI CONTROLLER (DOM Manipulation & Application Coordination)
    ========================================================================== */
 class UIController {
-  constructor(postService, authService, soundFX) {
-    this.postService = postService;
-    this.authService = authService;
-    this.soundFX = soundFX;
-
+  constructor() {
+    this.postService = new PostService();
+    this.authService = new AuthService();
     this.scene = null;
     this.currentPost = null;
 
-    // Cache DOM Elements
-    this.dom = {
-      canvasContainer: document.getElementById('canvas-container'),
-      btnResetView: document.getElementById('btn-reset-view'),
-      postHoverCard: document.getElementById('post-hover-card'),
-      hoverCategory: document.getElementById('hover-category'),
-      hoverTitle: document.getElementById('hover-title'),
-      hoverMeta: document.getElementById('hover-meta'),
-      searchInput: document.getElementById('search-input'),
-      categoryPills: document.getElementById('category-pills'),
-      btnSoundToggle: document.getElementById('btn-sound-toggle'),
-      soundIcon: document.getElementById('sound-icon'),
-      authLoggedOut: document.getElementById('auth-logged-out'),
-      authLoggedIn: document.getElementById('auth-logged-in'),
-      btnOpenLogin: document.getElementById('btn-open-login'),
-      btnOpenRegister: document.getElementById('btn-open-register'),
-      btnLogout: document.getElementById('btn-logout'),
-      userAvatar: document.getElementById('user-avatar'),
-      userDisplayName: document.getElementById('user-display-name'),
-      btnOpenCreatePost: document.getElementById('btn-open-create-post'),
-      readerOverlay: document.getElementById('reader-overlay'),
-      readerPanel: document.getElementById('reader-panel'),
-      btnCloseReader: document.getElementById('btn-close-reader'),
-      readerCategory: document.getElementById('reader-category'),
-      readerReadTime: document.getElementById('reader-readtime'),
-      readerTitle: document.getElementById('reader-title'),
-      readerAuthorName: document.getElementById('reader-author-name'),
-      readerAuthorAvatar: document.getElementById('reader-author-avatar'),
-      readerDate: document.getElementById('reader-date'),
-      readerBannerMotif: document.getElementById('reader-banner-motif'),
-      readerBody: document.getElementById('reader-body'),
-      readerTags: document.getElementById('reader-tags'),
-      btnLikePost: document.getElementById('btn-like-post'),
-      likeIcon: document.getElementById('like-icon'),
-      likeCount: document.getElementById('like-count'),
-      commentsContainer: document.getElementById('comments-container'),
-      commentTotalBadge: document.getElementById('comment-total-badge'),
-      commenterNamePreview: document.getElementById('commenter-name-preview'),
-      commentInput: document.getElementById('comment-input'),
-      btnSubmitComment: document.getElementById('btn-submit-comment'),
-      modalCreatePost: document.getElementById('modal-create-post'),
-      formCreatePost: document.getElementById('form-create-post'),
-      btnCloseCreatePost: document.getElementById('btn-close-create-post'),
-      btnCancelCreatePost: document.getElementById('btn-cancel-create-post'),
-      modalAuth: document.getElementById('modal-auth'),
-      tabLogin: document.getElementById('tab-login'),
-      tabRegister: document.getElementById('tab-register'),
-      formLogin: document.getElementById('form-login'),
-      formRegister: document.getElementById('form-register'),
-      btnCloseAuth: document.getElementById('btn-close-auth'),
-      toastContainer: document.getElementById('toast-container')
-    };
-
-    this.init();
+    this.initScene();
+    this.bindEvents();
+    this.updateAuthUI();
   }
 
-  init() {
-    // 1. Initialize 3D Scene
-    this.scene = new ThreeDoodleScene(
-      this.dom.canvasContainer,
+  initScene() {
+    const container = document.getElementById('canvas-container');
+    this.scene = new ThreeAnimusScene(
+      container,
       (post) => this.openReader(post),
-      (post, x, y) => this.handlePostHover(post, x, y)
+      (post, x, y) => this.updateHoverCard(post, x, y)
     );
-
-    // Populate Initial 3D Posts
-    this.scene.populatePosts(this.postService.getAll());
-
-    // 2. Setup Auth State
-    this.authService.onChange((user) => this.updateAuthUI(user));
-    this.updateAuthUI(this.authService.user);
-
-    // 3. Bind UI Events
-    this.bindEvents();
+    this.scene.loadPosts(this.postService.getAll());
   }
 
   bindEvents() {
-    // Sound Toggle
-    this.dom.btnSoundToggle.addEventListener('click', () => {
-      this.soundFX.enabled = !this.soundFX.enabled;
-      this.dom.soundIcon.textContent = this.soundFX.enabled ? '🔊' : '🔇';
-      this.showToast(this.soundFX.enabled ? 'Comic Sound FX: ON' : 'Comic Sound FX: OFF');
+    // 1. Audio Sound Toggle
+    const btnSound = document.getElementById('btn-sound-toggle');
+    const soundIcon = document.getElementById('sound-icon');
+    btnSound.addEventListener('click', () => {
+      soundFX.enabled = !soundFX.enabled;
+      soundIcon.textContent = soundFX.enabled ? '🔊' : '🔇';
+      this.showToast(soundFX.enabled ? 'Animus SFX Activated' : 'Audio Muted');
     });
 
-    // Reset View Button
-    this.dom.btnResetView.addEventListener('click', () => {
+    // 2. Camera Reset Button
+    document.getElementById('btn-reset-view').addEventListener('click', () => {
+      soundFX.playClick();
+      this.scene.resetView();
       this.closeReader();
-      this.scene.resetCameraOverview();
     });
 
-    // Search Input
-    this.dom.searchInput.addEventListener('input', (e) => {
-      const q = e.target.value.toLowerCase().trim();
-      this.scene.postMeshes.forEach(mesh => {
-        const p = mesh.userData.postData;
-        const match = !q || p.title.toLowerCase().includes(q) || p.author.toLowerCase().includes(q) || p.content.toLowerCase().includes(q);
-        mesh.visible = match;
+    // 3. Category Filter Buttons
+    const pills = document.querySelectorAll('.cat-pill');
+    pills.forEach(pill => {
+      pill.addEventListener('click', (e) => {
+        soundFX.playClick();
+        pills.forEach(p => {
+          p.classList.remove('bg-animus-cyan', 'text-animus-void', 'font-bold', 'shadow-animus-cyan');
+          p.classList.add('text-slate-300');
+        });
+        pill.classList.add('bg-animus-cyan', 'text-animus-void', 'font-bold', 'shadow-animus-cyan');
+        pill.classList.remove('text-slate-300');
+
+        const cat = pill.getAttribute('data-category');
+        const query = document.getElementById('search-input').value;
+        this.scene.applyFilterAndSearch(cat, query);
       });
     });
 
-    // Category Filter Pills
-    this.dom.categoryPills.addEventListener('click', (e) => {
-      const pill = e.target.closest('.cat-pill');
-      if (!pill) return;
-      this.soundFX.playPop();
-
-      // Toggle active style
-      this.dom.categoryPills.querySelectorAll('.cat-pill').forEach(btn => {
-        btn.classList.remove('bg-ink', 'text-white');
-        btn.classList.add('bg-white', 'text-ink');
-      });
-      pill.classList.remove('bg-white', 'text-ink');
-      pill.classList.add('bg-ink', 'text-white');
-
-      const cat = pill.getAttribute('data-category');
-      this.scene.filterByCategory(cat);
+    // 4. Search Query Input
+    const searchInput = document.getElementById('search-input');
+    searchInput.addEventListener('input', (e) => {
+      const activePill = document.querySelector('.cat-pill.bg-animus-cyan');
+      const cat = activePill ? activePill.getAttribute('data-category') : 'ALL';
+      this.scene.applyFilterAndSearch(cat, e.target.value);
     });
 
-    // Auth Modals (Login / Register)
-    this.dom.btnOpenLogin.addEventListener('click', () => this.openAuthModal('login'));
-    this.dom.btnOpenRegister.addEventListener('click', () => this.openAuthModal('register'));
-    this.dom.btnCloseAuth.addEventListener('click', () => this.closeAuthModal());
-    this.dom.tabLogin.addEventListener('click', () => this.switchAuthTab('login'));
-    this.dom.tabRegister.addEventListener('click', () => this.switchAuthTab('register'));
-
-    this.dom.formLogin.addEventListener('submit', (e) => {
-      e.preventDefault();
-      const username = document.getElementById('login-username').value;
-      this.authService.login(username);
-      this.closeAuthModal();
-      this.showToast(`Welcome back, ${username}! 🎨`);
-      this.soundFX.playChime();
-    });
-
-    this.dom.formRegister.addEventListener('submit', (e) => {
-      e.preventDefault();
-      const username = document.getElementById('reg-username').value;
-      const email = document.getElementById('reg-email').value;
-      this.authService.register(username, email);
-      this.closeAuthModal();
-      this.showToast(`Joined DoodleSphere! Ready to sketch, ${username} ✨`);
-      this.soundFX.playChime();
-    });
-
-    this.dom.btnLogout.addEventListener('click', () => {
-      this.authService.logout();
-      this.showToast('Logged out of DoodleSphere.');
-    });
-
-    // Reader Close Button
-    this.dom.btnCloseReader.addEventListener('click', () => {
+    // 5. Reading Overlay Close Button
+    document.getElementById('btn-close-reader').addEventListener('click', () => {
       this.closeReader();
-      this.scene.resetCameraOverview();
     });
 
-    // Close reader when clicking outside panel
-    this.dom.readerOverlay.addEventListener('click', (e) => {
-      if (e.target === this.dom.readerOverlay) {
-        this.closeReader();
-        this.scene.resetCameraOverview();
-      }
-    });
-
-    // Like Post Button
-    this.dom.btnLikePost.addEventListener('click', () => {
+    // 6. Like / Wax Seal Reaction Button
+    document.getElementById('btn-like-post').addEventListener('click', () => {
       if (!this.currentPost) return;
+      soundFX.playClick();
       const updated = this.postService.toggleLike(this.currentPost.id);
       if (updated) {
-        this.dom.likeCount.textContent = updated.likes;
-        this.dom.likeIcon.textContent = updated.hasLiked ? '💖' : '❤️';
-        this.soundFX.playPop();
+        document.getElementById('like-count').textContent = updated.likes;
+        document.getElementById('like-icon').textContent = updated.hasLiked ? '⚜️' : '🗡️';
+        this.showToast(updated.hasLiked ? 'Assassin Wax Seal Affixed!' : 'Seal Removed');
       }
     });
 
-    // Top-Level Comment Submission
-    this.dom.btnSubmitComment.addEventListener('click', () => {
-      const text = this.dom.commentInput.value.trim();
-      if (!text) {
-        this.showToast('Please type your comic thought first! ✏️');
-        return;
-      }
-      const author = this.authService.getUserName();
-      this.postService.addComment(this.currentPost.id, null, text, author);
-      this.dom.commentInput.value = '';
-      this.soundFX.playChime();
-      this.renderComments(this.currentPost);
-      this.showToast('Doodle comment published! 💬');
+    // 7. Submit Top-Level Comment
+    document.getElementById('btn-submit-comment').addEventListener('click', () => {
+      this.submitComment();
     });
 
-    // Create New Post Modal
-    this.dom.btnOpenCreatePost.addEventListener('click', () => {
-      this.soundFX.playPop();
-      this.dom.modalCreatePost.classList.remove('hidden');
-      this.dom.modalCreatePost.classList.add('flex');
+    // 8. Open & Close Create Post Modal
+    document.getElementById('btn-open-create-post').addEventListener('click', () => {
+      soundFX.playSync();
+      document.getElementById('modal-create-post').classList.remove('hidden');
+      document.getElementById('modal-create-post').classList.add('flex');
     });
 
-    const closeCreate = () => {
-      this.dom.modalCreatePost.classList.add('hidden');
-      this.dom.modalCreatePost.classList.remove('flex');
+    const closeCreateModal = () => {
+      soundFX.playClick();
+      document.getElementById('modal-create-post').classList.add('hidden');
+      document.getElementById('modal-create-post').classList.remove('flex');
     };
-    this.dom.btnCloseCreatePost.addEventListener('click', closeCreate);
-    this.dom.btnCancelCreatePost.addEventListener('click', closeCreate);
+    document.getElementById('btn-close-create-post').addEventListener('click', closeCreateModal);
+    document.getElementById('btn-cancel-create-post').addEventListener('click', closeCreateModal);
 
-    this.dom.formCreatePost.addEventListener('submit', (e) => {
+    // 9. Handle Create Post Form Submission
+    document.getElementById('form-create-post').addEventListener('submit', (e) => {
       e.preventDefault();
-      const title = document.getElementById('post-input-title').value.trim();
-      const category = document.getElementById('post-input-category').value;
-      const stamp = document.getElementById('post-input-stamp').value;
-      const author = document.getElementById('post-input-author').value.trim() || this.authService.getUserName();
-      const rawTags = document.getElementById('post-input-tags').value;
-      const tags = rawTags ? rawTags.split(',').map(t => t.trim().toLowerCase()) : ['doodle'];
-      const content = document.getElementById('post-input-content').value.trim();
-
-      const newPost = this.postService.createPost({
-        title,
-        category,
-        stamp,
-        author,
-        tags,
-        content
-      });
-
-      // Spawn new 3D book mesh into Three.js scene
-      this.scene.addNewPost(newPost);
-
-      closeCreate();
-      this.dom.formCreatePost.reset();
-      this.showToast(`"${title}" is now floating in the 3D Sphere! 🚀`);
+      this.createNewPost();
     });
-  }
 
-  updateAuthUI(user) {
-    if (user) {
-      this.dom.authLoggedOut.classList.add('hidden');
-      this.dom.authLoggedIn.classList.remove('hidden');
-      this.dom.authLoggedIn.classList.add('flex');
-      this.dom.userAvatar.textContent = user.avatar || user.name[0].toUpperCase();
-      this.dom.userDisplayName.textContent = user.name;
-      this.dom.commenterNamePreview.textContent = user.name;
-    } else {
-      this.dom.authLoggedOut.classList.remove('hidden');
-      this.dom.authLoggedIn.classList.add('hidden');
-      this.dom.authLoggedIn.classList.remove('flex');
-      this.dom.commenterNamePreview.textContent = 'Guest Doodler';
-    }
-  }
+    // 10. Auth Modals (Open/Close, Login, Register, Logout)
+    const modalAuth = document.getElementById('modal-auth');
+    const openAuth = (tab) => {
+      soundFX.playClick();
+      modalAuth.classList.remove('hidden');
+      modalAuth.classList.add('flex');
+      this.switchAuthTab(tab);
+    };
 
-  openAuthModal(tab = 'login') {
-    this.soundFX.playPop();
-    this.dom.modalAuth.classList.remove('hidden');
-    this.dom.modalAuth.classList.add('flex');
-    this.switchAuthTab(tab);
-  }
+    document.getElementById('btn-open-login').addEventListener('click', () => openAuth('login'));
+    document.getElementById('btn-open-register').addEventListener('click', () => openAuth('register'));
+    document.getElementById('btn-close-auth').addEventListener('click', () => {
+      soundFX.playClick();
+      modalAuth.classList.add('hidden');
+      modalAuth.classList.remove('flex');
+    });
 
-  closeAuthModal() {
-    this.dom.modalAuth.classList.add('hidden');
-    this.dom.modalAuth.classList.remove('flex');
+    document.getElementById('tab-login').addEventListener('click', () => this.switchAuthTab('login'));
+    document.getElementById('tab-register').addEventListener('click', () => this.switchAuthTab('register'));
+
+    document.getElementById('form-login').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const username = document.getElementById('login-username').value.trim();
+      this.authService.login(username);
+      modalAuth.classList.add('hidden');
+      modalAuth.classList.remove('flex');
+      this.showToast(`Subject Authorized: ${this.authService.getUserName()}`);
+    });
+
+    document.getElementById('form-register').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const username = document.getElementById('reg-username').value.trim();
+      const email = document.getElementById('reg-email').value.trim();
+      this.authService.register(username, email);
+      modalAuth.classList.add('hidden');
+      modalAuth.classList.remove('flex');
+      this.showToast(`New Assassin Recruited: ${this.authService.getUserName()}`);
+    });
+
+    document.getElementById('btn-logout').addEventListener('click', () => {
+      soundFX.playClick();
+      this.authService.logout();
+      this.showToast('Session Desynchronized');
+    });
+
+    this.authService.onChange(() => this.updateAuthUI());
   }
 
   switchAuthTab(tab) {
+    soundFX.playClick();
+    const tabLogin = document.getElementById('tab-login');
+    const tabReg = document.getElementById('tab-register');
+    const formLogin = document.getElementById('form-login');
+    const formReg = document.getElementById('form-register');
+
     if (tab === 'login') {
-      this.dom.tabLogin.classList.replace('border-transparent', 'border-doodlePink');
-      this.dom.tabLogin.classList.replace('text-gray-400', 'text-ink');
-      this.dom.tabRegister.classList.replace('border-doodlePink', 'border-transparent');
-      this.dom.tabRegister.classList.replace('text-ink', 'text-gray-400');
-      this.dom.formLogin.classList.remove('hidden');
-      this.dom.formRegister.classList.add('hidden');
+      tabLogin.classList.add('border-animus-cyan', 'text-animus-cyan');
+      tabLogin.classList.remove('border-transparent', 'text-slate-400');
+      tabReg.classList.remove('border-animus-cyan', 'text-animus-cyan');
+      tabReg.classList.add('border-transparent', 'text-slate-400');
+      formLogin.classList.remove('hidden');
+      formReg.classList.add('hidden');
     } else {
-      this.dom.tabRegister.classList.replace('border-transparent', 'border-doodlePink');
-      this.dom.tabRegister.classList.replace('text-gray-400', 'text-ink');
-      this.dom.tabLogin.classList.replace('border-doodlePink', 'border-transparent');
-      this.dom.tabLogin.classList.replace('text-ink', 'text-gray-400');
-      this.dom.formRegister.classList.remove('hidden');
-      this.dom.formLogin.classList.add('hidden');
+      tabReg.classList.add('border-animus-cyan', 'text-animus-cyan');
+      tabReg.classList.remove('border-transparent', 'text-slate-400');
+      tabLogin.classList.remove('border-animus-cyan', 'text-animus-cyan');
+      tabLogin.classList.add('border-transparent', 'text-slate-400');
+      formReg.classList.remove('hidden');
+      formLogin.classList.add('hidden');
     }
   }
 
-  handlePostHover(post, clientX, clientY) {
+  updateAuthUI() {
+    const loggedIn = this.authService.isLoggedIn();
+    const loggedInContainer = document.getElementById('auth-logged-in');
+    const loggedOutContainer = document.getElementById('auth-logged-out');
+    const commenterPreview = document.getElementById('commenter-name-preview');
+
+    if (loggedIn) {
+      loggedInContainer.classList.remove('hidden');
+      loggedInContainer.classList.add('flex');
+      loggedOutContainer.classList.add('hidden');
+
+      const user = this.authService.user;
+      document.getElementById('user-avatar').textContent = user.avatar || 'A';
+      document.getElementById('user-display-name').textContent = user.name;
+      if (commenterPreview) commenterPreview.textContent = user.name;
+    } else {
+      loggedInContainer.classList.add('hidden');
+      loggedInContainer.classList.remove('flex');
+      loggedOutContainer.classList.remove('hidden');
+      if (commenterPreview) commenterPreview.textContent = 'Unsynchronized Subject';
+    }
+  }
+
+  updateHoverCard(post, x, y) {
+    const card = document.getElementById('post-hover-card');
     if (!post) {
-      this.dom.postHoverCard.style.opacity = '0';
+      card.classList.add('opacity-0');
+      card.style.left = '-999px';
+      card.style.top = '-999px';
       return;
     }
-    this.dom.hoverCategory.textContent = post.category;
-    this.dom.hoverCategory.style.backgroundColor = post.accentColor || '#ffd13b';
-    this.dom.hoverTitle.textContent = post.title;
-    this.dom.hoverMeta.textContent = `By ${post.author} • ${post.readTime}`;
 
-    this.dom.postHoverCard.style.left = `${clientX}px`;
-    this.dom.postHoverCard.style.top = `${clientY - 20}px`;
-    this.dom.postHoverCard.style.opacity = '1';
+    document.getElementById('hover-category').textContent = post.category.toUpperCase();
+    document.getElementById('hover-title').textContent = post.title;
+    document.getElementById('hover-meta').textContent = `By ${post.author} • ${post.readTime}`;
+
+    card.style.left = `${x}px`;
+    card.style.top = `${y}px`;
+    card.classList.remove('opacity-0');
+  }
+
+  /**
+   * Generates an authentic Leonardo da Vinci Renaissance Blueprint SVG
+   * dynamically tailored to the post's theme and category.
+   */
+  generateCodexBlueprintSVG(post) {
+    const isTech = post.category === 'TECH';
+    const isPhilosophy = post.category === 'PHILOSOPHY';
+    const isLore = post.category === 'LORE';
+
+    // 1. TECH SCHEMATIC (Leonardo's Optical Refraction, Shaders & Mechanical Gears)
+    if (isTech) {
+      return `
+        <svg viewBox="0 0 600 240" class="w-full h-full" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <pattern id="blueprint-dots" width="16" height="16" patternUnits="userSpaceOnUse">
+              <circle cx="8" cy="8" r="1.5" fill="#4b3827" fill-opacity="0.25"/>
+            </pattern>
+          </defs>
+          <rect width="600" height="240" fill="url(#blueprint-dots)" />
+          
+          <!-- Background Assassin Watermark -->
+          <path d="M500 40 L450 180 L470 180 L500 110 L530 180 L550 180 Z" fill="#4b3827" fill-opacity="0.08"/>
+          
+          <!-- Optical Lens & Ray Inversion Scheme -->
+          <circle cx="200" cy="120" r="70" fill="none" stroke="#1c150e" stroke-width="2.5" stroke-dasharray="4,2"/>
+          <circle cx="200" cy="120" r="55" fill="none" stroke="#4b3827" stroke-width="1.5"/>
+          <circle cx="200" cy="120" r="4" fill="#8a181a"/>
+          
+          <!-- Mechanical Gear Assembly -->
+          <g transform="translate(370, 110)">
+            <circle cx="0" cy="0" r="45" fill="none" stroke="#1c150e" stroke-width="2.5"/>
+            <circle cx="0" cy="0" r="32" fill="none" stroke="#4b3827" stroke-width="1.5"/>
+            <circle cx="0" cy="0" r="12" fill="#e5a93b" fill-opacity="0.4" stroke="#1c150e" stroke-width="2"/>
+            <!-- Gear Teeth -->
+            ${Array.from({ length: 12 }).map((_, i) => {
+              const a = (i * 30 * Math.PI) / 180;
+              const x1 = Math.cos(a) * 45; const y1 = Math.sin(a) * 45;
+              const x2 = Math.cos(a) * 53; const y2 = Math.sin(a) * 53;
+              return `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#1c150e" stroke-width="3"/>`;
+            }).join('')}
+          </g>
+
+          <!-- Intersecting Ray Tracing Lines & Angle Arcs -->
+          <line x1="40" y1="50" x2="360" y2="190" stroke="#8a181a" stroke-width="1.8" stroke-dasharray="6,3"/>
+          <line x1="40" y1="190" x2="360" y2="50" stroke="#8a181a" stroke-width="1.8" stroke-dasharray="6,3"/>
+          <line x1="20" y1="120" x2="580" y2="120" stroke="#1c150e" stroke-width="1.2" stroke-opacity="0.5"/>
+          
+          <!-- Caliper Measurement Marks -->
+          <line x1="130" y1="20" x2="270" y2="20" stroke="#1c150e" stroke-width="1.5"/>
+          <line x1="130" y1="15" x2="130" y2="25" stroke="#1c150e" stroke-width="1.5"/>
+          <line x1="270" y1="15" x2="270" y2="25" stroke="#1c150e" stroke-width="1.5"/>
+          <text x="180" y="16" font-family="Share Tech Mono" font-size="10" fill="#1c150e" font-weight="bold">Ø = 14.2 BRACCIA</text>
+          
+          <!-- Leonardo Italian Mirror Inscription -->
+          <text x="40" y="215" font-family="Kalam" font-style="italic" font-size="13" fill="#4b3827">
+            "Della prospettiva dei colori et delle linee... l'ombra e la luce in punto"
+          </text>
+          <text x="440" y="215" font-family="Share Tech Mono" font-size="11" fill="#008080" font-weight="bold">
+            [SHADER_MATRIX // OK]
+          </text>
+        </svg>
+      `;
+    }
+
+    // 2. CODEX SCHEMATIC (Leonardo's Flying Machine / Ornithopter Wing Breakdown)
+    if (!isPhilosophy && !isLore) {
+      return `
+        <svg viewBox="0 0 600 240" class="w-full h-full" xmlns="http://www.w3.org/2000/svg">
+          <!-- Compass Grid -->
+          <circle cx="300" cy="120" r="90" fill="none" stroke="#4b3827" stroke-width="1" stroke-opacity="0.3"/>
+          <circle cx="300" cy="120" r="110" fill="none" stroke="#4b3827" stroke-width="1" stroke-dasharray="4,4" stroke-opacity="0.4"/>
+          
+          <!-- Ornithopter Wing Skeletal Frame -->
+          <path d="M 60 180 Q 220 40 420 70 Q 540 90 560 130 Q 420 120 280 160 Z" fill="#ecdcb9" fill-opacity="0.6" stroke="#1c150e" stroke-width="3"/>
+          
+          <!-- Ribbed Struts & Pulleys -->
+          <line x1="160" y1="130" x2="190" y2="60" stroke="#1c150e" stroke-width="2"/>
+          <line x1="230" y1="145" x2="270" y2="55" stroke="#1c150e" stroke-width="2"/>
+          <line x1="310" y1="140" x2="350" y2="60" stroke="#1c150e" stroke-width="2"/>
+          <line x1="390" y1="125" x2="430" y2="72" stroke="#1c150e" stroke-width="2"/>
+          <line x1="470" y1="110" x2="500" y2="82" stroke="#1c150e" stroke-width="1.8"/>
+
+          <!-- Tensioner Wires & Pull-cord Ring -->
+          <path d="M 60 180 L 300 120 L 560 130" fill="none" stroke="#8a181a" stroke-width="1.8" stroke-dasharray="5,2"/>
+          <circle cx="300" cy="120" r="6" fill="#8a181a"/>
+          
+          <!-- Aerodynamic Vector Arrows -->
+          <path d="M 120 50 Q 180 20 240 40" fill="none" stroke="#e5a93b" stroke-width="2" marker-end="url(#arrow)"/>
+          <path d="M 280 30 Q 340 10 400 30" fill="none" stroke="#e5a93b" stroke-width="2"/>
+          
+          <!-- Scribe Notes -->
+          <text x="50" y="35" font-family="Cinzel" font-size="12" font-weight="bold" fill="#1c150e">
+            FIG. I — ALA DIRETTA CON GIUNTO DI SALICE
+          </text>
+          <text x="50" y="215" font-family="Kalam" font-style="italic" font-size="13" fill="#4b3827">
+            "L'uomo colle sue larghe ale movendo contro l'aria resistera et volera." — Codex fol. 38r
+          </text>
+        </svg>
+      `;
+    }
+
+    // 3. PHILOSOPHY SCHEMATIC (The Assassin Hidden Blade & Brotherhood Insignia)
+    if (isPhilosophy) {
+      return `
+        <svg viewBox="0 0 600 240" class="w-full h-full" xmlns="http://www.w3.org/2000/svg">
+          <!-- Background Concentric Circles -->
+          <circle cx="300" cy="120" r="85" fill="none" stroke="#4b3827" stroke-width="1.5" stroke-opacity="0.3"/>
+          <line x1="100" y1="120" x2="500" y2="120" stroke="#4b3827" stroke-width="1" stroke-opacity="0.3"/>
+          <line x1="300" y1="20" x2="300" y2="220" stroke="#4b3827" stroke-width="1" stroke-opacity="0.3"/>
+
+          <!-- Assassin Brotherhood Insignia Crest -->
+          <g transform="translate(300, 115) scale(0.95)">
+            <path d="M 0 -75 L -55 55 L -30 55 L 0 -5 L 30 55 L 55 55 Z" fill="#8a181a" stroke="#1c150e" stroke-width="2.5"/>
+            <path d="M 0 15 L -22 68 L 0 80 L 22 68 Z" fill="#8a181a" stroke="#1c150e" stroke-width="2"/>
+          </g>
+
+          <!-- Hidden Blade Mechanism Cross-Section (Forearm Rail & Spring Cam) -->
+          <rect x="70" y="105" width="460" height="30" rx="4" fill="#ecdcb9" fill-opacity="0.5" stroke="#1c150e" stroke-width="2.5"/>
+          <line x1="120" y1="120" x2="480" y2="120" stroke="#8a181a" stroke-width="3"/>
+          
+          <!-- Spring Coils -->
+          ${Array.from({ length: 14 }).map((_, i) => {
+            const x = 140 + i * 18;
+            return `<path d="M ${x} 110 Q ${x + 9} 102 ${x + 18} 110 Q ${x + 9} 138 ${x + 18} 130" fill="none" stroke="#1c150e" stroke-width="2"/>`;
+          }).join('')}
+
+          <!-- Inscription -->
+          <text x="60" y="35" font-family="Cinzel" font-size="13" font-weight="bold" fill="#1c150e">
+            PROGETTO LAMA CELATA // MECCANISMO A SCATTO
+          </text>
+          <text x="60" y="215" font-family="Kalam" font-style="italic" font-size="13" fill="#4b3827">
+            "Nulla è reale, ogni cosa è lecita. Agiamo nell'ombra per servire la luce."
+          </text>
+        </svg>
+      `;
+    }
+
+    // 4. LORE SCHEMATIC (Piece of Eden Quantum Relic Geometry)
+    return `
+      <svg viewBox="0 0 600 240" class="w-full h-full" xmlns="http://www.w3.org/2000/svg">
+        <!-- Spherical Grid & Orbital Rings -->
+        <circle cx="300" cy="120" r="75" fill="#ecdcb9" fill-opacity="0.5" stroke="#1c150e" stroke-width="3"/>
+        <ellipse cx="300" cy="120" rx="75" ry="30" fill="none" stroke="#e5a93b" stroke-width="2"/>
+        <ellipse cx="300" cy="120" rx="30" ry="75" fill="none" stroke="#e5a93b" stroke-width="2"/>
+        <circle cx="300" cy="120" r="45" fill="none" stroke="#8a181a" stroke-width="1.8" stroke-dasharray="4,2"/>
+        <circle cx="300" cy="120" r="8" fill="#8a181a"/>
+
+        <!-- Fibonacci Golden Spirals -->
+        <path d="M 300 120 Q 340 100 375 120 T 450 170" fill="none" stroke="#1c150e" stroke-width="1.8" stroke-dasharray="3,3"/>
+        <path d="M 300 120 Q 260 140 225 120 T 150 70" fill="none" stroke="#1c150e" stroke-width="1.8" stroke-dasharray="3,3"/>
+
+        <!-- Precursor Isu Glyphs -->
+        <text x="60" y="35" font-family="Cinzel" font-size="13" font-weight="bold" fill="#1c150e">
+          REPERTO ISU #02 // MATRICE QUANTISTICA DEL PRECURSORE
+        </text>
+        <text x="60" y="215" font-family="Kalam" font-style="italic" font-size="13" fill="#4b3827">
+          "Chi possiede la mela, comanda la percezione dell'umanità intera."
+        </text>
+      </svg>
+    `;
   }
 
   openReader(post) {
     this.currentPost = post;
 
-    // Populate Reader Data
-    this.dom.readerCategory.textContent = post.category;
-    this.dom.readerCategory.style.backgroundColor = post.accentColor || '#ffd13b';
-    this.dom.readerReadTime.textContent = post.readTime;
-    this.dom.readerTitle.textContent = post.title;
-    this.dom.readerAuthorName.textContent = post.author;
-    this.dom.readerAuthorAvatar.textContent = (post.author || 'A')[0].toUpperCase();
-    this.dom.readerDate.textContent = `Published on ${post.date} • ${post.authorBio || 'Author'}`;
-    this.dom.readerBannerMotif.textContent = post.stamp || '🎨';
-    this.dom.likeCount.textContent = post.likes;
-    this.dom.likeIcon.textContent = post.hasLiked ? '💖' : '❤️';
+    // Header & Meta Details
+    document.getElementById('reader-category').textContent = `${post.category} // RECONSTRUCTION`;
+    document.getElementById('reader-readtime').textContent = post.readTime;
+    document.getElementById('reader-title').textContent = post.title;
+    document.getElementById('reader-author-name').textContent = post.author;
+    document.getElementById('reader-date').textContent = post.date || 'Historical Record';
+    document.getElementById('reader-author-avatar').textContent = (post.author || 'A')[0].toUpperCase();
 
-    // Body content formatting
-    this.dom.readerBody.innerHTML = post.content
-      .split('\n\n')
-      .map(para => `<p class="leading-relaxed font-sans text-gray-800">${para}</p>`)
-      .join('');
+    // Dynamic Sequence and Author Bio
+    const seqEl = document.getElementById('reader-sequence');
+    if (seqEl) {
+      seqEl.textContent = post.era ? `SEQUENCE // ${post.era.toUpperCase()}` : 'HISTORICAL SEQUENCE // RECONSTRUCTED';
+    }
 
-    // Tags
-    this.dom.readerTags.innerHTML = post.tags
-      .map(tag => `<span class="px-2.5 py-1 text-xs font-bold rounded-full bg-white border-2 border-ink shadow-comic-sm text-ink font-doodle">#${tag}</span>`)
-      .join('');
+    const bioEl = document.getElementById('reader-author-bio');
+    if (bioEl) {
+      bioEl.textContent = post.authorBio || 'Brotherhood Chronicler';
+    }
 
-    // Render Threaded Comments
-    this.renderComments(post);
+    const folioEl = document.getElementById('blueprint-folio-title');
+    if (folioEl) {
+      folioEl.textContent = `FOLIO_${post.category}_${post.id.slice(-4).toUpperCase()} // LEONARDO CODEX`;
+    }
 
-    // Slide in drawer
-    this.dom.readerOverlay.classList.remove('opacity-0', 'pointer-events-none');
-    this.dom.readerOverlay.classList.add('opacity-100', 'pointer-events-auto');
-    this.dom.readerPanel.classList.remove('translate-x-full');
+    // Populate Dynamic Technical Blueprint Banner SVG
+    const blueprintCanvas = document.getElementById('reader-blueprint-canvas');
+    if (blueprintCanvas) {
+      blueprintCanvas.innerHTML = this.generateCodexBlueprintSVG(post);
+    }
+
+    // Like Reaction Wax Seal
+    document.getElementById('like-count').textContent = post.likes;
+
+    // Format Editorial Content with Illuminated Renaissance Initial
+    const bodyEl = document.getElementById('reader-body');
+    bodyEl.innerHTML = '';
+    const paragraphs = post.content.split('\n\n').filter(p => p.trim());
+
+    paragraphs.forEach((pText, idx) => {
+      const cleanText = pText.trim();
+      const p = document.createElement('p');
+
+      if (idx === 0) {
+        // Gilded Renaissance Illuminated Drop Cap
+        const firstLetter = cleanText.charAt(0);
+        const restOfText = cleanText.slice(1);
+
+        p.className = 'leading-relaxed text-codex-ink text-lg sm:text-xl mb-5 font-manuscript';
+        p.innerHTML = `
+          <span class="inline-block float-left mr-3.5 mb-1 px-3.5 py-1.5 bg-gradient-to-br from-[#8a181a] via-[#6f1315] to-[#45090b] text-[#f7f1df] font-codex font-black text-3xl sm:text-4xl rounded-md border-2 border-[#1c150e] shadow-[3px_3px_0px_#1c150e] leading-none select-none">
+            ${firstLetter}
+          </span>
+          <span>${restOfText}</span>
+        `;
+      } else if (cleanText.startsWith('"') || cleanText.startsWith('“')) {
+        // Illuminated Blockquote Style
+        p.className = 'my-6 p-4 rounded-lg bg-amber-50/70 border-l-4 border-[#8a181a] italic font-manuscript text-xl text-amber-950 shadow-sm';
+        p.innerHTML = `<em>${cleanText}</em>`;
+      } else {
+        p.className = 'leading-relaxed text-codex-ink text-lg sm:text-xl mb-4 font-manuscript';
+        p.textContent = cleanText;
+      }
+      bodyEl.appendChild(p);
+
+      // Add a subtle marginalia flourish after paragraph 2
+      if (idx === 1 && paragraphs.length > 2) {
+        const marginalia = document.createElement('div');
+        marginalia.className = 'my-3 py-1.5 px-3 border-y border-dashed border-amber-800/30 flex items-center justify-between text-xs font-doodle text-amber-900/80 bg-amber-100/30 rounded';
+        marginalia.innerHTML = `
+          <span>✍ Scribe Note: Folio verified against Venice archival rolls</span>
+          <span class="font-mono text-[10px] text-amber-950 font-bold">⚜ CODEX ARCHIVE</span>
+        `;
+        bodyEl.appendChild(marginalia);
+      }
+    });
+
+    // Render Tags
+    const tagsContainer = document.getElementById('reader-tags');
+    tagsContainer.innerHTML = '';
+    (post.tags || []).forEach(tag => {
+      const tagSpan = document.createElement('span');
+      tagSpan.className = 'px-2.5 py-1 text-xs font-mono font-bold bg-codex-parchmentDark text-codex-ink border border-codex-ink rounded shadow-sm';
+      tagSpan.textContent = `#${tag}`;
+      tagsContainer.appendChild(tagSpan);
+    });
+
+    // Render Comments
+    this.renderComments(post.comments || []);
+
+    // Open Drawer Animation
+    const overlay = document.getElementById('reader-overlay');
+    const panel = document.getElementById('reader-panel');
+    overlay.classList.remove('opacity-0', 'pointer-events-none');
+    panel.classList.remove('translate-x-full');
   }
 
   closeReader() {
-    this.dom.readerPanel.classList.add('translate-x-full');
-    this.dom.readerOverlay.classList.remove('opacity-100', 'pointer-events-auto');
-    this.dom.readerOverlay.classList.add('opacity-0', 'pointer-events-none');
+    const overlay = document.getElementById('reader-overlay');
+    const panel = document.getElementById('reader-panel');
+    panel.classList.add('translate-x-full');
+    overlay.classList.add('opacity-0', 'pointer-events-none');
+
+    // Recenter camera overview in 3D void
+    this.scene.resetView();
     this.currentPost = null;
   }
 
-  /**
-   * Recursively renders threaded comments
-   */
-  renderComments(post) {
-    const totalCount = this.postService.countTotalComments(post.comments);
-    this.dom.commentTotalBadge.textContent = totalCount;
+  renderComments(comments) {
+    const container = document.getElementById('comments-container');
+    container.innerHTML = '';
+    const totalCount = this.postService.countTotalComments(comments);
+    document.getElementById('comment-total-badge').textContent = totalCount;
 
-    if (!post.comments || post.comments.length === 0) {
-      this.dom.commentsContainer.innerHTML = `
-        <div class="text-center py-6 border-2 border-dashed border-gray-300 rounded-xl bg-white/60">
-          <span class="text-3xl">📝</span>
-          <p class="font-doodle text-sm font-bold text-gray-600 mt-2">No comments yet!</p>
-          <p class="text-xs text-gray-400">Be the first to leave a doodle thought above.</p>
+    if (!comments || comments.length === 0) {
+      container.innerHTML = `
+        <div class="text-center py-8 font-doodle text-codex-sepia text-sm">
+          No observations recorded yet. Be the first to inscribe your annotations!
         </div>
       `;
       return;
     }
 
-    const renderCommentNode = (comment, depth = 0) => {
-      const isNested = depth > 0;
-      const indentClass = isNested ? 'ml-6 sm:ml-10 border-l-4 border-doodleYellow pl-3 mt-3' : 'bg-white comic-border shadow-comic-sm p-4';
-      
-      const repliesHTML = (comment.replies && comment.replies.length > 0)
-        ? comment.replies.map(rep => renderCommentNode(rep, depth + 1)).join('')
-        : '';
+    const renderCommentNode = (c, depth = 0) => {
+      const el = document.createElement('div');
+      el.className = `p-3 sm:p-4 rounded-lg bg-white/70 border border-codex-sepia/30 shadow-sm ${depth > 0 ? 'ml-4 sm:ml-8 mt-2 border-l-3 border-l-codex-redWax bg-amber-50/50' : 'mb-3'}`;
 
-      return `
-        <div class="${indentClass} transition-all" data-comment-id="${comment.id}">
-          <div class="flex items-center justify-between">
-            <div class="flex items-center gap-2">
-              <div class="w-7 h-7 rounded-full bg-doodleYellow border border-ink flex items-center justify-center font-comic text-xs">
-                ${comment.author[0].toUpperCase()}
-              </div>
-              <span class="font-doodle font-bold text-sm text-ink">${comment.author}</span>
-              <span class="text-[10px] text-gray-400 font-sans">${comment.date}</span>
+      el.innerHTML = `
+        <div class="flex items-center justify-between mb-1.5">
+          <div class="flex items-center gap-2">
+            <div class="w-6 h-6 rounded-full bg-codex-parchmentDark border border-codex-ink flex items-center justify-center font-codex text-xs font-bold text-codex-ink">
+              ${(c.author || 'A')[0].toUpperCase()}
             </div>
-            <button class="btn-upvote-comment text-xs font-bold text-gray-500 hover:text-doodlePink flex items-center gap-1" data-id="${comment.id}">
-              <span>▲</span> <span>${comment.upvotes}</span>
-            </button>
+            <span class="font-codex font-bold text-xs text-codex-ink">${c.author}</span>
+            <span class="font-mono text-[10px] text-codex-sepia">• ${c.date}</span>
           </div>
-          <p class="font-sans text-sm text-gray-800 mt-2 leading-relaxed">${comment.text}</p>
-          
-          <div class="mt-2.5 flex items-center gap-3">
-            <button class="btn-reply-toggle text-xs font-comic font-bold text-doodleCyan hover:text-cyan-700 uppercase tracking-wider" data-id="${comment.id}">
-              💬 Reply
-            </button>
+          <button data-comment-id="${c.id}" class="btn-upvote-comment text-xs font-mono text-codex-sepia hover:text-codex-redWax font-bold flex items-center gap-1">
+            ▲ <span>${c.upvotes || 0}</span>
+          </button>
+        </div>
+        <p class="text-sm font-sans text-codex-ink pl-8 leading-relaxed">${c.text}</p>
+        <div class="flex items-center justify-end mt-2 pt-1 border-t border-codex-sepia/20">
+          <button data-parent-id="${c.id}" class="btn-reply-toggle text-[11px] font-animus text-codex-redWax hover:underline font-bold">
+            [ ADD RECURSIVE REPLY ]
+          </button>
+        </div>
+        <div id="reply-box-${c.id}" class="hidden mt-2 pt-2">
+          <textarea id="reply-input-${c.id}" rows="2" placeholder="Inscribe your reply..."
+            class="w-full p-2 border border-codex-ink rounded text-xs font-sans bg-codex-parchment text-codex-ink resize-none"></textarea>
+          <div class="flex justify-end gap-2 mt-1">
+            <button data-cancel-id="${c.id}" class="btn-cancel-reply text-[10px] font-animus text-codex-sepia px-2 py-1">CANCEL</button>
+            <button data-submit-id="${c.id}" class="btn-submit-reply bg-codex-sepia hover:bg-codex-ink text-white text-[10px] font-codex font-bold px-3 py-1 rounded">SEND ✍️</button>
           </div>
-
-          <!-- Hidden Nested Reply Input Box -->
-          <div class="reply-input-box hidden mt-3 bg-parchment p-3 border-2 border-ink rounded-lg" id="reply-box-${comment.id}">
-            <textarea rows="2" placeholder="Replying to ${comment.author}..." 
-              class="w-full p-2 border border-ink rounded font-sans text-xs bg-white focus:outline-none focus:ring-2 focus:ring-doodleYellow resize-none reply-textarea"></textarea>
-            <div class="flex items-center justify-end gap-2 mt-2">
-              <button class="btn-cancel-reply text-xs font-bold text-gray-500 hover:text-ink px-2 py-1">Cancel</button>
-              <button class="btn-submit-nested-reply comic-btn bg-doodleYellow hover:bg-amber-400 text-ink px-3 py-1 text-xs font-bold font-comic" data-id="${comment.id}">
-                REPLY
-              </button>
-            </div>
-          </div>
-
-          ${repliesHTML}
         </div>
       `;
+
+      // Upvote action
+      el.querySelector('.btn-upvote-comment').addEventListener('click', () => {
+        soundFX.playClick();
+        this.postService.upvoteComment(this.currentPost.id, c.id);
+        this.renderComments(this.currentPost.comments);
+      });
+
+      // Reply Toggle
+      const replyBox = el.querySelector(`#reply-box-${c.id}`);
+      el.querySelector('.btn-reply-toggle').addEventListener('click', () => {
+        replyBox.classList.toggle('hidden');
+      });
+      el.querySelector('.btn-cancel-reply').addEventListener('click', () => {
+        replyBox.classList.add('hidden');
+      });
+      el.querySelector('.btn-submit-reply').addEventListener('click', () => {
+        const text = document.getElementById(`reply-input-${c.id}`).value.trim();
+        if (!text) return;
+        soundFX.playClick();
+        const author = this.authService.getUserName();
+        this.postService.addComment(this.currentPost.id, text, author, c.id);
+        this.renderComments(this.currentPost.comments);
+      });
+
+      // Render nested replies recursively
+      if (c.replies && c.replies.length > 0) {
+        const repliesContainer = document.createElement('div');
+        repliesContainer.className = 'space-y-2';
+        c.replies.forEach(subComment => {
+          repliesContainer.appendChild(renderCommentNode(subComment, depth + 1));
+        });
+        el.appendChild(repliesContainer);
+      }
+
+      return el;
     };
 
-    this.dom.commentsContainer.innerHTML = post.comments
-      .map(c => renderCommentNode(c, 0))
-      .join('');
+    comments.forEach(c => {
+      container.appendChild(renderCommentNode(c, 0));
+    });
+  }
 
-    // Attach listeners for Upvotes & Replies
-    this.dom.commentsContainer.querySelectorAll('.btn-upvote-comment').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const id = btn.getAttribute('data-id');
-        this.postService.upvoteComment(this.currentPost.id, id);
-        this.soundFX.playPop();
-        this.renderComments(this.currentPost);
-      });
+  submitComment() {
+    const input = document.getElementById('comment-input');
+    const text = input.value.trim();
+    if (!text || !this.currentPost) return;
+
+    soundFX.playClick();
+    const author = this.authService.getUserName();
+    this.postService.addComment(this.currentPost.id, text, author);
+    input.value = '';
+    this.renderComments(this.currentPost.comments);
+    this.showToast('Codex Annotation Synchronized!');
+  }
+
+  createNewPost() {
+    const title = document.getElementById('post-input-title').value.trim();
+    const category = document.getElementById('post-input-category').value;
+    const stamp = document.getElementById('post-input-stamp').value;
+    const author = document.getElementById('post-input-author').value.trim() || this.authService.getUserName();
+    const tagsInput = document.getElementById('post-input-tags').value.trim();
+    const content = document.getElementById('post-input-content').value.trim();
+
+    const tags = tagsInput ? tagsInput.split(',').map(t => t.trim()).filter(Boolean) : [];
+
+    const newPost = this.postService.create({
+      title,
+      category,
+      stamp,
+      author,
+      tags,
+      content
     });
 
-    this.dom.commentsContainer.querySelectorAll('.btn-reply-toggle').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const id = btn.getAttribute('data-id');
-        const box = document.getElementById(`reply-box-${id}`);
-        if (box) box.classList.toggle('hidden');
-      });
-    });
+    // Close modal & reset form
+    document.getElementById('modal-create-post').classList.add('hidden');
+    document.getElementById('modal-create-post').classList.remove('flex');
+    document.getElementById('form-create-post').reset();
 
-    this.dom.commentsContainer.querySelectorAll('.btn-cancel-reply').forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        const box = e.target.closest('.reply-input-box');
-        if (box) box.classList.add('hidden');
-      });
-    });
-
-    this.dom.commentsContainer.querySelectorAll('.btn-submit-nested-reply').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const parentId = btn.getAttribute('data-id');
-        const box = document.getElementById(`reply-box-${parentId}`);
-        const textarea = box.querySelector('.reply-textarea');
-        const text = textarea.value.trim();
-        if (!text) return;
-
-        const author = this.authService.getUserName();
-        this.postService.addComment(this.currentPost.id, parentId, text, author);
-        this.soundFX.playChime();
-        this.renderComments(this.currentPost);
-        this.showToast('Nested reply posted! 💬');
-      });
-    });
+    // Spawn 3D Fragment in Three.js Animus Void in real time!
+    this.scene.addNewPost(newPost);
+    this.showToast(`Memory Sequence Injected: "${title.substring(0, 20)}..."`);
   }
 
   showToast(message) {
+    const container = document.getElementById('toast-container');
     const toast = document.createElement('div');
-    toast.className = 'bg-white px-4 py-2.5 comic-border shadow-comic flex items-center gap-2 text-xs font-bold font-comic tracking-wide pointer-events-auto transform translate-y-2 opacity-0 transition-all duration-200';
-    toast.innerHTML = `<span>✨</span><span>${message}</span>`;
-    this.dom.toastContainer.appendChild(toast);
+    toast.className = 'animus-bracket-box px-4 py-2.5 rounded text-xs font-animus text-animus-cyan border border-animus-cyan shadow-animus-cyan flex items-center gap-2 transform translate-x-full transition-transform duration-300';
+    toast.innerHTML = `
+      <span class="w-2 h-2 rounded-full bg-animus-cyan animate-ping"></span>
+      <span>${message}</span>
+    `;
+    container.appendChild(toast);
 
     requestAnimationFrame(() => {
-      toast.classList.remove('translate-y-2', 'opacity-0');
-      toast.classList.add('translate-y-0', 'opacity-100');
+      toast.classList.remove('translate-x-full');
     });
 
     setTimeout(() => {
-      toast.classList.add('opacity-0', 'translate-y-2');
-      setTimeout(() => toast.remove(), 250);
-    }, 2800);
+      toast.classList.add('translate-x-full');
+      setTimeout(() => toast.remove(), 300);
+    }, 3200);
   }
 }
 
-// Bootstrap Application when DOM is ready
-document.addEventListener('DOMContentLoaded', () => {
-  const postService = new PostService();
-  const authService = new AuthService();
-  window.doodleSphere = new UIController(postService, authService, soundFX);
+// Initialize Application when DOM content is loaded
+window.addEventListener('DOMContentLoaded', () => {
+  new UIController();
 });

@@ -38,6 +38,21 @@ const server = http.createServer((req, res) => {
   });
 });
 
-server.listen(PORT, () => {
-  console.log(`DoodleSphere server running at http://localhost:${PORT}`);
-});
+let currentPort = parseInt(process.env.PORT, 10) || 3000;
+
+function startServer(port) {
+  const listener = server.listen(port, () => {
+    console.log(`\n🎨 DoodleSphere server running at: http://localhost:${port}\n`);
+  });
+
+  listener.once('error', (err) => {
+    if (err.code === 'EADDRINUSE') {
+      console.log(`⚠️  Port ${port} is already in use. Trying http://localhost:${port + 1}...`);
+      startServer(port + 1);
+    } else {
+      console.error('Server error:', err);
+    }
+  });
+}
+
+startServer(currentPort);

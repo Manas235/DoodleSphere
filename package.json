@@ -1,0 +1,20 @@
+{
+  "name": "doodlesphere",
+  "version": "1.0.0",
+  "description": "3D Comic & Doodle Social Blogging Platform",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "keywords": [
+    "threejs",
+    "comic",
+    "doodle",
+    "blog",
+    "webgl",
+    "interactive"
+  ],
+  "author": "Manas",
+  "license": "MIT"
+}

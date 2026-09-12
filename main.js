@@ -1991,7 +1991,15 @@ class UIController {
   }
 }
 
-// Initialize Application when DOM content is loaded
-window.addEventListener('DOMContentLoaded', () => {
+// Initialize Application when DOM content is ready (handles deferred/module timing)
+function initApp() {
+  console.log('[DoodleSphere] Initializing Animus Void Engine & UIController...');
   new UIController();
-});
+}
+
+if (document.readyState === 'loading') {
+  window.addEventListener('DOMContentLoaded', initApp);
+} else {
+  initApp();
+}
+

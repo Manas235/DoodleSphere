@@ -1,7 +1,7 @@
 @echo off
-title DoodleSphere - Animus Memory Void Server
+title AnimusCodex - Animus Memory Void Server
 echo ========================================================
-echo        DOODLESPHERE - ANIMUS MEMORY VOID
+echo        ANIMUS // CODEX - MEMORY CORRIDOR VOID
 echo ========================================================
 echo Starting local node server at http://localhost:3000 ...
 echo.

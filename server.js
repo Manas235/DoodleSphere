@@ -45,7 +45,7 @@ let currentPort = parseInt(process.env.PORT, 10) || 3000;
 
 function startServer(port) {
   const listener = server.listen(port, () => {
-    console.log(`\n🎨 DoodleSphere server running at: http://localhost:${port}\n`);
+    console.log(`\n🦅 AnimusCodex server running at: http://localhost:${port}\n`);
   });
 
   listener.once('error', (err) => {

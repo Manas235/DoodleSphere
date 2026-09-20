@@ -1,7 +1,7 @@
 {
-  "name": "doodlesphere",
+  "name": "animuscodex",
   "version": "1.0.0",
-  "description": "3D Comic & Doodle Social Blogging Platform",
+  "description": "3D Animus Void & Historical Codex Social Blogging Platform",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",

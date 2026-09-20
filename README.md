@@ -1,4 +1,4 @@
-# 🦅 DoodleSphere — 3D Animus Void & Historical Codex Blogverse
+# 🦅 AnimusCodex — 3D Animus Void & Historical Codex Blogverse
 
 > An interactive 3D Social Blogging platform fusing an **Assassin's Creed "Animus" loading void** with heavy-inked comic doodle art and Renaissance historical codex journals. Built with Vanilla Three.js (ESM), Tailwind CSS, and Vanilla JavaScript.
 

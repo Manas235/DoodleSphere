@@ -1,5 +1,5 @@
 /**
- * DoodleSphere — 3D Animus Void & Historical Codex Social Blogging Platform
+ * AnimusCodex — 3D Animus Void & Historical Codex Social Blogging Platform
  * 
  * Architecture:
  * 1. AnimusSoundFX: Web Audio API sound synthesizer for Animus telemetry & parchment SFX.
@@ -312,7 +312,7 @@ In this dossier, I've compiled hand-drawn sketches of its internal glyph rings, 
     tags: ['shaders', 'webgl', 'illustration', 'comics', 'threejs'],
     content: `How do we marry the hand-drawn grit of comic book ink with the mathematical precision of 3D computer graphics?
 
-In DoodleSphere, we employ an inverted-hull black outline mesh around each memory fragment, paired with procedural Ben-Day dot matrices rendered on the diffuse texture map.
+In AnimusCodex, we employ an inverted-hull black outline mesh around each memory fragment, paired with procedural Ben-Day dot matrices rendered on the diffuse texture map.
 
 When illuminated by cyan directional keylights, the shadows don't just fade into generic dark gray—they break down into crosshatch lines and ink splatters reminiscent of graphic novels and Renaissance sketches.`,
     comments: []
@@ -321,7 +321,7 @@ When illuminated by cyan directional keylights, the shadows don't just fade into
 
 class PostService {
   constructor() {
-    const saved = localStorage.getItem('doodlesphere_animus_posts_v2');
+    const saved = localStorage.getItem('animuscodex_posts_v2') || localStorage.getItem('doodlesphere_animus_posts_v2');
     if (saved) {
       try {
         this.posts = JSON.parse(saved);
@@ -335,7 +335,7 @@ class PostService {
   }
 
   save() {
-    localStorage.setItem('doodlesphere_animus_posts_v2', JSON.stringify(this.posts));
+    localStorage.setItem('animuscodex_posts_v2', JSON.stringify(this.posts));
   }
 
   getAll() {
@@ -445,7 +445,7 @@ class PostService {
    ========================================================================== */
 class AuthService {
   constructor() {
-    this.user = JSON.parse(localStorage.getItem('doodlesphere_animus_user')) || {
+    this.user = JSON.parse(localStorage.getItem('animuscodex_user') || localStorage.getItem('doodlesphere_animus_user')) || {
       name: 'Ezio Auditore',
       avatar: 'E',
       email: 'ezio@brotherhood.firenze',
@@ -469,7 +469,7 @@ class AuthService {
       email: `${(username || 'subject').toLowerCase().replace(/\s+/g, '')}@abstergo.com`,
       role: 'Synchronized Subject'
     };
-    localStorage.setItem('doodlesphere_animus_user', JSON.stringify(this.user));
+    localStorage.setItem('animuscodex_user', JSON.stringify(this.user));
     this.notify();
     return this.user;
   }
@@ -481,13 +481,14 @@ class AuthService {
       email: email || 'recruit@brotherhood.org',
       role: 'Initiate'
     };
-    localStorage.setItem('doodlesphere_animus_user', JSON.stringify(this.user));
+    localStorage.setItem('animuscodex_user', JSON.stringify(this.user));
     this.notify();
     return this.user;
   }
 
   logout() {
     this.user = null;
+    localStorage.removeItem('animuscodex_user');
     localStorage.removeItem('doodlesphere_animus_user');
     this.notify();
   }
@@ -1993,7 +1994,7 @@ class UIController {
 
 // Initialize Application when DOM content is ready (handles deferred/module timing)
 function initApp() {
-  console.log('[DoodleSphere] Initializing Animus Void Engine & UIController...');
+  console.log('[AnimusCodex] Initializing Animus Void Engine & UIController...');
   new UIController();
 }
 

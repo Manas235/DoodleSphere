@@ -376,7 +376,14 @@ When illuminated by cyan directional keylights, the shadows don't just fade into
 
 class PostService {
   constructor() {
-    const saved = localStorage.getItem('animuscodex_posts_v2') || localStorage.getItem('doodlesphere_animus_posts_v2');
+    const SCHEMA_VER = 'ds_schema_v3';
+    if (localStorage.getItem('doodlesphere_schema') !== SCHEMA_VER) {
+      localStorage.removeItem('animuscodex_posts_v2');
+      localStorage.removeItem('doodlesphere_animus_posts_v2');
+      localStorage.setItem('doodlesphere_schema', SCHEMA_VER);
+    }
+
+    const saved = localStorage.getItem('animuscodex_posts_v3') || localStorage.getItem('animuscodex_posts_v2');
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
@@ -400,7 +407,7 @@ class PostService {
 
   save() {
     try {
-      localStorage.setItem('animuscodex_posts_v2', JSON.stringify(this.posts));
+      localStorage.setItem('animuscodex_posts_v3', JSON.stringify(this.posts));
     } catch(e) {}
   }
 

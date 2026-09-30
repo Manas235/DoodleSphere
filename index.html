@@ -691,6 +691,65 @@
     .bp-pulse-dot { animation: bp-pulse-glow 2.5s ease-in-out infinite; }
     .bp-scan-line { animation: bp-scan-sweep 4s ease-in-out infinite; }
 
+    /* COMMENT SLIDE-UP FADE (used by renderCommentNode) */
+    @keyframes slide-up-fade {
+      from { opacity: 0; transform: translateY(16px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* READER BODY STAGGERED ENTRANCE */
+    .reader-body-animate > * {
+      animation: slide-up-fade 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+    }
+    .reader-body-animate > *:nth-child(1) { animation-delay: 0.05s; }
+    .reader-body-animate > *:nth-child(2) { animation-delay: 0.10s; }
+    .reader-body-animate > *:nth-child(3) { animation-delay: 0.15s; }
+    .reader-body-animate > *:nth-child(4) { animation-delay: 0.20s; }
+    .reader-body-animate > *:nth-child(5) { animation-delay: 0.25s; }
+    .reader-body-animate > *:nth-child(n+6) { animation-delay: 0.30s; }
+
+    /* CUSTOM CURSOR GLOW (desktop only) */
+    @media (pointer: fine) {
+      body { cursor: none; }
+      #cursor-dot {
+        position: fixed; pointer-events: none; z-index: 99999;
+        width: 12px; height: 12px; border-radius: 50%;
+        background: var(--ds-teal);
+        box-shadow: 0 0 18px var(--ds-teal), 0 0 6px #fff;
+        transform: translate(-50%, -50%);
+        transition: transform 0.08s ease, width 0.2s ease, height 0.2s ease, background 0.2s;
+        mix-blend-mode: screen;
+      }
+      #cursor-ring {
+        position: fixed; pointer-events: none; z-index: 99998;
+        width: 34px; height: 34px; border-radius: 50%;
+        border: 1.5px solid rgba(168, 85, 247, 0.6);
+        transform: translate(-50%, -50%);
+        transition: transform 0.18s ease, width 0.2s ease, height 0.2s ease, opacity 0.2s;
+        mix-blend-mode: screen;
+      }
+    }
+
+    /* PAGE-LOAD VIGNETTE FLASH */
+    @keyframes vignette-flash {
+      0%   { opacity: 1; }
+      100% { opacity: 0; pointer-events: none; }
+    }
+    #page-flash {
+      position: fixed; inset: 0; z-index: 9000;
+      background: radial-gradient(ellipse at center, transparent 30%, #06060e 100%);
+      animation: vignette-flash 1.2s cubic-bezier(0.4, 0, 0.2, 1) 0.1s forwards;
+      pointer-events: none;
+    }
+
+    /* CARD COUNT BADGE PULSE */
+    @keyframes count-pop {
+      0%   { transform: scale(1); }
+      50%  { transform: scale(1.4); color: var(--ds-green); }
+      100% { transform: scale(1); }
+    }
+    .count-popping { animation: count-pop 0.35s ease-out; }
+
 
     /* FILE PROTOCOL WARNING */
     #file-protocol-warning {
@@ -735,6 +794,13 @@
 
 <body>
 
+  <!-- Page-load vignette flash -->
+  <div id="page-flash"></div>
+
+  <!-- Custom cursor glow (desktop) -->
+  <div id="cursor-dot"></div>
+  <div id="cursor-ring"></div>
+
   <!-- Holographic Scanline Beam -->
   <div class="scanline-beam"></div>
 
@@ -745,6 +811,7 @@
 
   <!-- 3D Canvas -->
   <div id="canvas-container"></div>
+
 
   <!-- NAVIGATION -->
   <div id="topnav">

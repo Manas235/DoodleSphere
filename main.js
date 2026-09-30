@@ -1709,6 +1709,67 @@ class UIController {
 function initApp() {
   console.log('[DoodleSphere] Animated startup 🎨⚡');
   new UIController();
+
+  // Custom glowing cursor (desktop only)
+  const dot  = document.getElementById('cursor-dot');
+  const ring = document.getElementById('cursor-ring');
+  if (dot && ring && window.matchMedia('(pointer: fine)').matches) {
+    let mouseX = -200, mouseY = -200;
+    let ringX  = -200, ringY  = -200;
+
+    document.addEventListener('mousemove', (e) => {
+      mouseX = e.clientX;
+      mouseY = e.clientY;
+    });
+
+    let isClicking = false;
+    document.addEventListener('mousedown', () => {
+      isClicking = true;
+      dot.style.width  = '18px';
+      dot.style.height = '18px';
+      dot.style.background = 'var(--ds-pink)';
+      dot.style.boxShadow  = '0 0 28px var(--ds-pink), 0 0 8px #fff';
+    });
+    document.addEventListener('mouseup', () => {
+      isClicking = false;
+      dot.style.width  = '12px';
+      dot.style.height = '12px';
+      dot.style.background = 'var(--ds-teal)';
+      dot.style.boxShadow  = '0 0 18px var(--ds-teal), 0 0 6px #fff';
+    });
+
+    // Expand ring on interactive elements
+    document.addEventListener('mouseover', (e) => {
+      if (e.target.closest('button, a, [role="button"], .cat-pill, .ds-post-card')) {
+        ring.style.width   = '52px';
+        ring.style.height  = '52px';
+        ring.style.opacity = '0.5';
+        ring.style.borderColor = 'rgba(0,240,255,0.7)';
+      }
+    });
+    document.addEventListener('mouseout', (e) => {
+      if (e.target.closest('button, a, [role="button"], .cat-pill, .ds-post-card')) {
+        ring.style.width   = '34px';
+        ring.style.height  = '34px';
+        ring.style.opacity = '1';
+        ring.style.borderColor = 'rgba(168, 85, 247, 0.6)';
+      }
+    });
+
+    (function animateCursor() {
+      // Dot snaps immediately
+      dot.style.left = `${mouseX}px`;
+      dot.style.top  = `${mouseY}px`;
+
+      // Ring lags behind with lerp
+      ringX += (mouseX - ringX) * 0.12;
+      ringY += (mouseY - ringY) * 0.12;
+      ring.style.left = `${ringX}px`;
+      ring.style.top  = `${ringY}px`;
+
+      requestAnimationFrame(animateCursor);
+    })();
+  }
 }
 
 if (document.readyState === 'loading') {

@@ -379,9 +379,18 @@ class PostService {
     const saved = localStorage.getItem('animuscodex_posts_v2') || localStorage.getItem('doodlesphere_animus_posts_v2');
     if (saved) {
       try {
-        this.posts = JSON.parse(saved);
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0 && parsed.every(p => p && typeof p === 'object' && p.title && (p.content || p.body))) {
+          this.posts = parsed;
+        } else {
+          console.warn('[PostService] Storage posts invalid or corrupted, resetting to initial defaults.');
+          this.posts = INITIAL_POSTS;
+          this.save();
+        }
       } catch (e) {
+        console.warn('[PostService] Error parsing storage posts, resetting to initial defaults:', e);
         this.posts = INITIAL_POSTS;
+        this.save();
       }
     } else {
       this.posts = INITIAL_POSTS;
@@ -390,17 +399,19 @@ class PostService {
   }
 
   save() {
-    localStorage.setItem('animuscodex_posts_v2', JSON.stringify(this.posts));
+    try {
+      localStorage.setItem('animuscodex_posts_v2', JSON.stringify(this.posts));
+    } catch(e) {}
   }
 
-  getAll() { return this.posts; }
+  getAll() { return this.posts || INITIAL_POSTS; }
 
-  getById(id) { return this.posts.find(p => p.id === id); }
+  getById(id) { return (this.posts || INITIAL_POSTS).find(p => p.id === id); }
 
   create(postData) {
     const newPost = {
       id: `animus-post-${Date.now()}`,
-      title: postData.title,
+      title: postData.title || 'Untitled Post',
       category: postData.category || 'CODEX',
       era: postData.era || 'Sequence Memory',
       author: postData.author || 'DoodleSphere Creator',
@@ -412,7 +423,7 @@ class PostService {
       likes: 1,
       hasLiked: false,
       tags: postData.tags && postData.tags.length > 0 ? postData.tags : ['doodle', 'creative'],
-      content: postData.content,
+      content: postData.content || '',
       comments: []
     };
     this.posts.unshift(newPost);
@@ -441,6 +452,7 @@ class PostService {
       replies: []
     };
     if (!parentCommentId) {
+      post.comments = post.comments || [];
       post.comments.unshift(newComment);
     } else {
       const appendRecursive = (list) => {
@@ -454,7 +466,7 @@ class PostService {
         }
         return false;
       };
-      appendRecursive(post.comments);
+      appendRecursive(post.comments || []);
     }
     this.save();
     return post;
@@ -462,10 +474,10 @@ class PostService {
 
   upvoteComment(postId, commentId) {
     const post = this.getById(postId);
-    if (!post) return;
+    if (!post || !post.comments) return;
     const findAndUpvote = (list) => {
       for (const c of list) {
-        if (c.id === commentId) { c.upvotes++; return true; }
+        if (c.id === commentId) { c.upvotes = (c.upvotes || 0) + 1; return true; }
         if (c.replies && findAndUpvote(c.replies)) return true;
       }
       return false;
@@ -475,6 +487,7 @@ class PostService {
   }
 
   countTotalComments(comments) {
+    if (!Array.isArray(comments)) return 0;
     let count = comments.length;
     for (const c of comments) {
       if (c.replies && c.replies.length > 0) count += this.countTotalComments(c.replies);
@@ -489,11 +502,16 @@ class PostService {
    ========================================================================== */
 class AuthService {
   constructor() {
-    this.user = JSON.parse(
-      localStorage.getItem('animuscodex_user') ||
-      localStorage.getItem('doodlesphere_animus_user') ||
-      'null'
-    ) || {
+    let savedUser = null;
+    try {
+      savedUser = JSON.parse(
+        localStorage.getItem('animuscodex_user') ||
+        localStorage.getItem('doodlesphere_animus_user') ||
+        'null'
+      );
+    } catch(e) {}
+
+    this.user = savedUser || {
       name: 'Ezio Auditore',
       avatar: 'E',
       email: 'ezio@doodlesphere.art',
@@ -512,7 +530,9 @@ class AuthService {
       email: `${(username || 'doodler').toLowerCase().replace(/\s+/g, '')}@doodlesphere.art`,
       role: 'Doodle Creator'
     };
-    localStorage.setItem('animuscodex_user', JSON.stringify(this.user));
+    try {
+      localStorage.setItem('animuscodex_user', JSON.stringify(this.user));
+    } catch(e) {}
     this.notify();
     return this.user;
   }
@@ -524,15 +544,19 @@ class AuthService {
       email: email || 'new@doodlesphere.art',
       role: 'Initiate'
     };
-    localStorage.setItem('animuscodex_user', JSON.stringify(this.user));
+    try {
+      localStorage.setItem('animuscodex_user', JSON.stringify(this.user));
+    } catch(e) {}
     this.notify();
     return this.user;
   }
 
   logout() {
     this.user = null;
-    localStorage.removeItem('animuscodex_user');
-    localStorage.removeItem('doodlesphere_animus_user');
+    try {
+      localStorage.removeItem('animuscodex_user');
+      localStorage.removeItem('doodlesphere_animus_user');
+    } catch(e) {}
     this.notify();
   }
 
@@ -723,7 +747,8 @@ const CAT_COLORS = {
 };
 
 function getCatStyle(cat) {
-  return CAT_COLORS[cat?.toUpperCase()] || CAT_COLORS.CODEX;
+  const key = (cat || 'CODEX').toString().toUpperCase();
+  return CAT_COLORS[key] || CAT_COLORS.CODEX;
 }
 
 class CardScene {
@@ -770,10 +795,11 @@ class CardScene {
   }
 
   _makeCard(post) {
+    if (!post) post = {};
     const cs = getCatStyle(post.category);
     const card = document.createElement('article');
     card.className = 'ds-post-card';
-    card.dataset.postId = post.id;
+    card.dataset.postId = post.id || `post-${Math.random()}`;
 
     card.style.cssText = `
       background: rgba(18, 16, 36, 0.82);
@@ -834,7 +860,7 @@ class CardScene {
       letter-spacing:0.03em;color:#f1f5f9;line-height:1.35;margin-bottom:12px;
       display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
     `;
-    title.textContent = post.title;
+    title.textContent = post.title || 'Untitled Story';
     card.appendChild(title);
 
     // Content preview in Syne font
@@ -844,14 +870,17 @@ class CardScene {
       line-height:1.6;margin-bottom:16px;
       display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;
     `;
-    preview.textContent = post.content.split('\n\n')[0].substring(0, 140) + '…';
+    const contentText = (post.content || post.body || '').toString();
+    const firstPara = contentText.split('\n\n')[0] || contentText;
+    preview.textContent = (firstPara.substring(0, 140) || 'Click to decrypt and read full story…') + (firstPara.length > 140 ? '…' : '');
     card.appendChild(preview);
 
     // Tags
-    if (post.tags && post.tags.length > 0) {
+    const tags = Array.isArray(post.tags) ? post.tags : [];
+    if (tags.length > 0) {
       const tagRow = document.createElement('div');
       tagRow.style.cssText = 'display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px;';
-      post.tags.slice(0, 3).forEach(tag => {
+      tags.slice(0, 3).forEach(tag => {
         const t = document.createElement('span');
         t.style.cssText = `
           font-family:'Fira Code',monospace;font-size:11px;
@@ -873,7 +902,8 @@ class CardScene {
       padding-top:14px;border-top:1px solid rgba(255,255,255,0.06);
     `;
 
-    const avatarLetter = (post.author || 'A')[0].toUpperCase();
+    const authorName = post.author || 'Anonymous';
+    const avatarLetter = authorName[0].toUpperCase();
     const authorSide = document.createElement('div');
     authorSide.style.cssText = 'display:flex;align-items:center;gap:10px;';
     authorSide.innerHTML = `
@@ -885,8 +915,8 @@ class CardScene {
         flex-shrink:0;
       ">${avatarLetter}</div>
       <div>
-        <div style="font-family:'Rajdhani',sans-serif;font-size:15px;font-weight:700;color:#f1f5f9;line-height:1;">${post.author}</div>
-        <div style="font-family:'Fira Code',monospace;font-size:10px;color:#8b9bb4;">${post.readTime}</div>
+        <div style="font-family:'Rajdhani',sans-serif;font-size:15px;font-weight:700;color:#f1f5f9;line-height:1;">${authorName}</div>
+        <div style="font-family:'Fira Code',monospace;font-size:10px;color:#8b9bb4;">${post.readTime || '3 min read'}</div>
       </div>
     `;
     footer.appendChild(authorSide);
@@ -895,7 +925,7 @@ class CardScene {
     metaSide.style.cssText = 'display:flex;align-items:center;gap:12px;';
     metaSide.innerHTML = `
       <span style="font-family:'Fira Code',monospace;font-size:12px;color:#8b9bb4;display:flex;align-items:center;gap:4px;">
-        ⚡ <span class="card-like-count-${post.id}" style="font-weight:600;color:#f1f5f9;">${post.likes}</span>
+        ⚡ <span class="card-like-count-${post.id}" style="font-weight:600;color:#f1f5f9;">${post.likes || 0}</span>
       </span>
       <span style="font-family:'Fira Code',monospace;font-size:12px;color:#8b9bb4;display:flex;align-items:center;gap:4px;">
         💬 ${(post.comments || []).length}
@@ -965,30 +995,27 @@ class CardScene {
   }
 
   loadPosts(posts) {
-    this.posts = posts;
+    this.posts = Array.isArray(posts) && posts.length > 0 ? posts : INITIAL_POSTS;
     this._render();
   }
 
   addNewPost(post) {
     this.posts.unshift(post);
     this._render();
-    // Scroll to top to show new card
     this.container.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
   applyFilterAndSearch(category, query) {
-    this.activeFilter = category;
+    this.activeFilter = category || 'ALL';
     this.searchQuery = (query || '').toLowerCase().trim();
     this._render();
   }
 
   resetView() {
-    // Smooth scroll to top
     this.container.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
   _render() {
-    // Inject keyframe animation if not already done
     if (!document.getElementById('ds-card-anim')) {
       const style = document.createElement('style');
       style.id = 'ds-card-anim';
@@ -1001,27 +1028,40 @@ class CardScene {
       document.head.appendChild(style);
     }
 
+    if (!this.grid) return;
     this.grid.innerHTML = '';
 
-    const filtered = this.posts.filter(p => {
-      const matchCat = this.activeFilter === 'ALL' || p.category.toUpperCase() === this.activeFilter.toUpperCase();
+    const postsToRender = Array.isArray(this.posts) && this.posts.length > 0 ? this.posts : INITIAL_POSTS;
+
+    const filtered = postsToRender.filter(p => {
+      if (!p) return false;
+      const category = (p.category || 'CODEX').toString().toUpperCase();
+      const matchCat = this.activeFilter === 'ALL' || category === this.activeFilter.toUpperCase();
       const q = this.searchQuery;
+      const titleStr = (p.title || '').toLowerCase();
+      const contentStr = (p.content || p.body || '').toLowerCase();
+      const authorStr = (p.author || '').toLowerCase();
+      const tagsArr = Array.isArray(p.tags) ? p.tags : [];
       const matchQ = !q ||
-        p.title.toLowerCase().includes(q) ||
-        p.content.toLowerCase().includes(q) ||
-        p.author.toLowerCase().includes(q) ||
-        (p.tags && p.tags.some(t => t.toLowerCase().includes(q)));
+        titleStr.includes(q) ||
+        contentStr.includes(q) ||
+        authorStr.includes(q) ||
+        tagsArr.some(t => (t || '').toLowerCase().includes(q));
       return matchCat && matchQ;
     });
 
     if (filtered.length === 0) {
-      this.emptyState.style.display = 'flex';
+      if (this.emptyState) this.emptyState.style.display = 'flex';
     } else {
-      this.emptyState.style.display = 'none';
+      if (this.emptyState) this.emptyState.style.display = 'none';
       filtered.forEach((post, i) => {
-        const card = this._makeCard(post);
-        card.style.animationDelay = `${i * 50}ms`;
-        this.grid.appendChild(card);
+        try {
+          const card = this._makeCard(post);
+          card.style.animationDelay = `${i * 50}ms`;
+          this.grid.appendChild(card);
+        } catch(err) {
+          console.error('[DoodleSphere] Error rendering card:', err);
+        }
       });
     }
   }

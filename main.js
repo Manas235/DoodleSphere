@@ -1,20 +1,16 @@
 /**
- * AnimusCodex — 3D Animus Void & Historical Codex Social Blogging Platform
- * 
+ * DoodleSphere — Colorful & Playful Creative Blogging Platform
+ *
  * Architecture:
- * 1. AnimusSoundFX: Web Audio API sound synthesizer for Animus telemetry & parchment SFX.
- * 2. Post & Comment Service: Memory sequence data store with threaded discussion tree.
- * 3. AuthService: Abstergo Subject session manager with localStorage persistence.
- * 4. ThreeAnimusScene: Pure Three.js 3D engine simulating the Animus loading void,
- *    floating memory fragments, doodle-ink comic textures, and codex transitions.
- * 5. UIController: DOM event coordination, reading overlay, writing modal, and HUD.
+ * 1. AnimusSoundFX: Web Audio API sound synthesizer.
+ * 2. PostService: Data store with threaded comment trees.
+ * 3. AuthService: Session manager with localStorage persistence.
+ * 4. CardScene: 2D animated card grid replacing the old Three.js 3D engine.
+ * 5. UIController: DOM event coordination, reader overlay, modals, HUD.
  */
 
-import * as THREE from 'three';
-import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-
 /* ==========================================================================
-   1. ANIMUS & CODEX AUDIO SYNTHESIZER (Web Audio API)
+   1. SOUND FX (Web Audio API)
    ========================================================================== */
 class AnimusSoundFX {
   constructor() {
@@ -22,103 +18,162 @@ class AnimusSoundFX {
     this.enabled = true;
   }
 
-  init() {
-    if (!this.ctx && (window.AudioContext || window.webkitAudioContext)) {
+  _initCtx() {
+    if (!this.ctx && typeof AudioContext !== 'undefined') {
       const AudioCtx = window.AudioContext || window.webkitAudioContext;
       this.ctx = new AudioCtx();
     }
-  }
-
-  playSync() {
-    if (!this.enabled) return;
-    this.init();
-    if (!this.ctx) return;
-    const now = this.ctx.currentTime;
-    
-    // Animus harmonic synchronization chime
-    [440, 659.25, 880, 1318.5].forEach((freq, i) => {
-      const osc = this.ctx.createOscillator();
-      const gain = this.ctx.createGain();
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(freq, now + i * 0.04);
-      gain.gain.setValueAtTime(0.08, now + i * 0.04);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.04 + 0.35);
-      osc.connect(gain);
-      gain.connect(this.ctx.destination);
-      osc.start(now + i * 0.04);
-      osc.stop(now + i * 0.04 + 0.38);
-    });
-  }
-
-  playParchmentRustle() {
-    if (!this.enabled) return;
-    this.init();
-    if (!this.ctx) return;
-    const now = this.ctx.currentTime;
-
-    // Filtered noise buffer simulating manuscript paper rustle
-    const bufferSize = this.ctx.sampleRate * 0.15;
-    const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
-    const data = buffer.getChannelData(0);
-    for (let i = 0; i < bufferSize; i++) {
-      data[i] = Math.random() * 2 - 1;
+    if (this.ctx && this.ctx.state === 'suspended') {
+      this.ctx.resume();
     }
-
-    const noise = this.ctx.createBufferSource();
-    noise.buffer = buffer;
-
-    const filter = this.ctx.createBiquadFilter();
-    filter.type = 'bandpass';
-    filter.frequency.setValueAtTime(1200, now);
-    filter.Q.setValueAtTime(1.5, now);
-
-    const gain = this.ctx.createGain();
-    gain.gain.setValueAtTime(0.12, now);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.14);
-
-    noise.connect(filter);
-    filter.connect(gain);
-    gain.connect(this.ctx.destination);
-
-    noise.start(now);
-  }
-
-  playGlitch() {
-    if (!this.enabled) return;
-    this.init();
-    if (!this.ctx) return;
-    const now = this.ctx.currentTime;
-
-    const osc = this.ctx.createOscillator();
-    const gain = this.ctx.createGain();
-    osc.type = 'sawtooth';
-    osc.frequency.setValueAtTime(800, now);
-    osc.frequency.linearRampToValueAtTime(180, now + 0.06);
-
-    gain.gain.setValueAtTime(0.06, now);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.06);
-
-    osc.connect(gain);
-    gain.connect(this.ctx.destination);
-    osc.start(now);
-    osc.stop(now + 0.07);
   }
 
   playClick() {
     if (!this.enabled) return;
-    this.init();
+    this._initCtx();
     if (!this.ctx) return;
-    const now = this.ctx.currentTime;
-    const osc = this.ctx.createOscillator();
-    const gain = this.ctx.createGain();
-    osc.type = 'triangle';
-    osc.frequency.setValueAtTime(1200, now);
-    gain.gain.setValueAtTime(0.05, now);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.03);
-    osc.connect(gain);
-    gain.connect(this.ctx.destination);
-    osc.start(now);
-    osc.stop(now + 0.04);
+    try {
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(600, this.ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(150, this.ctx.currentTime + 0.05);
+      gain.gain.setValueAtTime(0.12, this.ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.05);
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start();
+      osc.stop(this.ctx.currentTime + 0.05);
+    } catch(e) {}
+  }
+
+  playHover() {
+    if (!this.enabled) return;
+    this._initCtx();
+    if (!this.ctx) return;
+    try {
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(880, this.ctx.currentTime);
+      gain.gain.setValueAtTime(0.025, this.ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.03);
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start();
+      osc.stop(this.ctx.currentTime + 0.03);
+    } catch(e) {}
+  }
+
+  playSync() {
+    if (!this.enabled) return;
+    this._initCtx();
+    if (!this.ctx) return;
+    try {
+      const notes = [523.25, 659.25, 783.99, 1046.50];
+      notes.forEach((freq, idx) => {
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(freq, this.ctx.currentTime + idx * 0.05);
+        gain.gain.setValueAtTime(0.08, this.ctx.currentTime + idx * 0.05);
+        gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + idx * 0.05 + 0.2);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(this.ctx.currentTime + idx * 0.05);
+        osc.stop(this.ctx.currentTime + idx * 0.05 + 0.2);
+      });
+    } catch(e) {}
+  }
+
+  playParchmentRustle() {
+    if (!this.enabled) return;
+    this._initCtx();
+    if (!this.ctx) return;
+    try {
+      const bufferSize = Math.floor(this.ctx.sampleRate * 0.18);
+      const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) {
+        data[i] = Math.random() * 2 - 1;
+      }
+      const noise = this.ctx.createBufferSource();
+      noise.buffer = buffer;
+
+      const filter = this.ctx.createBiquadFilter();
+      filter.type = 'bandpass';
+      filter.frequency.setValueAtTime(900, this.ctx.currentTime);
+      filter.Q.setValueAtTime(2.5, this.ctx.currentTime);
+
+      const gain = this.ctx.createGain();
+      gain.gain.setValueAtTime(0.07, this.ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.18);
+
+      noise.connect(filter);
+      filter.connect(gain);
+      gain.connect(this.ctx.destination);
+      noise.start();
+    } catch(e) {}
+  }
+
+  playLike() {
+    if (!this.enabled) return;
+    this._initCtx();
+    if (!this.ctx) return;
+    try {
+      const notes = [659.25, 987.77];
+      notes.forEach((freq, idx) => {
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, this.ctx.currentTime + idx * 0.08);
+        gain.gain.setValueAtTime(0.12, this.ctx.currentTime + idx * 0.08);
+        gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + idx * 0.08 + 0.3);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(this.ctx.currentTime + idx * 0.08);
+        osc.stop(this.ctx.currentTime + idx * 0.08 + 0.3);
+      });
+    } catch(e) {}
+  }
+
+  playUpvote() {
+    if (!this.enabled) return;
+    this._initCtx();
+    if (!this.ctx) return;
+    try {
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(440, this.ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(880, this.ctx.currentTime + 0.08);
+      gain.gain.setValueAtTime(0.1, this.ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.08);
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start();
+      osc.stop(this.ctx.currentTime + 0.08);
+    } catch(e) {}
+  }
+
+  playGlitch() {
+    if (!this.enabled) return;
+    this._initCtx();
+    if (!this.ctx) return;
+    try {
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(140, this.ctx.currentTime);
+      osc.frequency.setValueAtTime(440, this.ctx.currentTime + 0.03);
+      osc.frequency.setValueAtTime(220, this.ctx.currentTime + 0.06);
+      gain.gain.setValueAtTime(0.06, this.ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.09);
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start();
+      osc.stop(this.ctx.currentTime + 0.09);
+    } catch(e) {}
   }
 }
 
@@ -126,7 +181,7 @@ const soundFX = new AnimusSoundFX();
 
 
 /* ==========================================================================
-   2. POST & COMMENT SERVICE (Data Store & Threaded Trees)
+   2. POST & COMMENT SERVICE
    ========================================================================== */
 const INITIAL_POSTS = [
   {
@@ -139,7 +194,7 @@ const INITIAL_POSTS = [
     readTime: '4 min read',
     date: 'Sequence 04 // Venice',
     stamp: '🦅',
-    accentColor: '#00f0ff',
+    accentColor: '#a855f7',
     likes: 128,
     hasLiked: false,
     tags: ['renaissance', 'flight', 'schematics', 'doodles', 'venice'],
@@ -188,7 +243,7 @@ Remember: ink and thought must flow unhindered before wood and metal take flight
     readTime: '5 min read',
     date: 'Abstergo Infiltration Log',
     stamp: '⚡',
-    accentColor: '#00f0ff',
+    accentColor: '#2dd4bf',
     likes: 94,
     hasLiked: false,
     tags: ['animus', 'threejs', 'shaders', 'webgl', 'code'],
@@ -218,12 +273,12 @@ When a user taps into a memory shard, we don't just switch screens—the 3D came
     title: 'The Creed & The Leap of Faith: On Freedom and Moral Dogma',
     category: 'PHILOSOPHY',
     era: 'Masyaf, 1191',
-    author: 'Altaïr Ibn-La\'Ahad',
+    author: "Altaïr Ibn-La'Ahad",
     authorBio: 'Mentor of the Levantine Brotherhood',
     readTime: '6 min read',
     date: 'Masyaf Archives',
     stamp: '🗡️',
-    accentColor: '#e5a93b',
+    accentColor: '#fb923c',
     likes: 186,
     hasLiked: false,
     tags: ['philosophy', 'creed', 'masyaf', 'wisdom', 'brotherhood'],
@@ -255,7 +310,7 @@ When we leap from the highest minarets into the hay wagons below, it is not mere
     readTime: '3 min read',
     date: 'Diplomatic Dispatches',
     stamp: '📜',
-    accentColor: '#d4af37',
+    accentColor: '#ec4899',
     likes: 72,
     hasLiked: false,
     tags: ['manuscript', 'doodles', 'history', 'art', 'marginalia'],
@@ -276,7 +331,7 @@ Doodling has always been humanity's subtle rebellion against rigid structure. It
     readTime: '5 min read',
     date: 'Database Entry 88-B',
     stamp: '🍎',
-    accentColor: '#e63946',
+    accentColor: '#f43f5e',
     likes: 110,
     hasLiked: false,
     tags: ['eden', 'precursors', 'isu', 'lore', 'mystery'],
@@ -306,7 +361,7 @@ In this dossier, I've compiled hand-drawn sketches of its internal glyph rings, 
     readTime: '4 min read',
     date: 'Graphic Shaders Lab',
     stamp: '🎨',
-    accentColor: '#00f0ff',
+    accentColor: '#4ade80',
     likes: 85,
     hasLiked: false,
     tags: ['shaders', 'webgl', 'illustration', 'comics', 'threejs'],
@@ -338,13 +393,9 @@ class PostService {
     localStorage.setItem('animuscodex_posts_v2', JSON.stringify(this.posts));
   }
 
-  getAll() {
-    return this.posts;
-  }
+  getAll() { return this.posts; }
 
-  getById(id) {
-    return this.posts.find(p => p.id === id);
-  }
+  getById(id) { return this.posts.find(p => p.id === id); }
 
   create(postData) {
     const newPost = {
@@ -352,15 +403,15 @@ class PostService {
       title: postData.title,
       category: postData.category || 'CODEX',
       era: postData.era || 'Sequence Memory',
-      author: postData.author || 'Brotherhood Initiate',
-      authorBio: 'Synchronized Animus User',
+      author: postData.author || 'DoodleSphere Creator',
+      authorBio: 'DoodleSphere Community Member',
       readTime: `${Math.max(2, Math.ceil((postData.content || '').split(' ').length / 100))} min read`,
-      date: 'Just Synchronized',
-      stamp: postData.stamp || '🦅',
-      accentColor: postData.category === 'TECH' ? '#00f0ff' : (postData.category === 'PHILOSOPHY' ? '#e5a93b' : '#d4af37'),
+      date: 'Just Posted',
+      stamp: postData.stamp || '🎨',
+      accentColor: '#a855f7',
       likes: 1,
       hasLiked: false,
-      tags: postData.tags && postData.tags.length > 0 ? postData.tags : ['animus', 'codex', 'doodle'],
+      tags: postData.tags && postData.tags.length > 0 ? postData.tags : ['doodle', 'creative'],
       content: postData.content,
       comments: []
     };
@@ -381,16 +432,14 @@ class PostService {
   addComment(postId, commentText, authorName, parentCommentId = null) {
     const post = this.getById(postId);
     if (!post) return null;
-
     const newComment = {
       id: `c-${Date.now()}`,
-      author: authorName || 'Brotherhood Scout',
-      date: 'Moments ago',
+      author: authorName || 'Anonymous Doodler',
+      date: 'Just now',
       text: commentText,
       upvotes: 0,
       replies: []
     };
-
     if (!parentCommentId) {
       post.comments.unshift(newComment);
     } else {
@@ -416,10 +465,7 @@ class PostService {
     if (!post) return;
     const findAndUpvote = (list) => {
       for (const c of list) {
-        if (c.id === commentId) {
-          c.upvotes++;
-          return true;
-        }
+        if (c.id === commentId) { c.upvotes++; return true; }
         if (c.replies && findAndUpvote(c.replies)) return true;
       }
       return false;
@@ -431,9 +477,7 @@ class PostService {
   countTotalComments(comments) {
     let count = comments.length;
     for (const c of comments) {
-      if (c.replies && c.replies.length > 0) {
-        count += this.countTotalComments(c.replies);
-      }
+      if (c.replies && c.replies.length > 0) count += this.countTotalComments(c.replies);
     }
     return count;
   }
@@ -441,33 +485,32 @@ class PostService {
 
 
 /* ==========================================================================
-   3. AUTH SERVICE (Abstergo Subject Session)
+   3. AUTH SERVICE
    ========================================================================== */
 class AuthService {
   constructor() {
-    this.user = JSON.parse(localStorage.getItem('animuscodex_user') || localStorage.getItem('doodlesphere_animus_user')) || {
+    this.user = JSON.parse(
+      localStorage.getItem('animuscodex_user') ||
+      localStorage.getItem('doodlesphere_animus_user') ||
+      'null'
+    ) || {
       name: 'Ezio Auditore',
       avatar: 'E',
-      email: 'ezio@brotherhood.firenze',
-      role: 'Master Assassin'
+      email: 'ezio@doodlesphere.art',
+      role: 'Master Doodler'
     };
     this.listeners = [];
   }
 
-  onChange(callback) {
-    this.listeners.push(callback);
-  }
-
-  notify() {
-    this.listeners.forEach(cb => cb(this.user));
-  }
+  onChange(callback) { this.listeners.push(callback); }
+  notify() { this.listeners.forEach(cb => cb(this.user)); }
 
   login(username) {
     this.user = {
-      name: username || 'Subject 17',
-      avatar: (username || 'S')[0].toUpperCase(),
-      email: `${(username || 'subject').toLowerCase().replace(/\s+/g, '')}@abstergo.com`,
-      role: 'Synchronized Subject'
+      name: username || 'Doodler',
+      avatar: (username || 'D')[0].toUpperCase(),
+      email: `${(username || 'doodler').toLowerCase().replace(/\s+/g, '')}@doodlesphere.art`,
+      role: 'Doodle Creator'
     };
     localStorage.setItem('animuscodex_user', JSON.stringify(this.user));
     this.notify();
@@ -476,9 +519,9 @@ class AuthService {
 
   register(username, email) {
     this.user = {
-      name: username || 'Recruit Assassin',
-      avatar: (username || 'R')[0].toUpperCase(),
-      email: email || 'recruit@brotherhood.org',
+      name: username || 'New Doodler',
+      avatar: (username || 'N')[0].toUpperCase(),
+      email: email || 'new@doodlesphere.art',
       role: 'Initiate'
     };
     localStorage.setItem('animuscodex_user', JSON.stringify(this.user));
@@ -493,858 +536,500 @@ class AuthService {
     this.notify();
   }
 
-  isLoggedIn() {
-    return !!this.user;
+  isLoggedIn() { return !!this.user; }
+  getUserName() { return this.user ? this.user.name : 'Anonymous Doodler'; }
+}
+
+
+/* ==========================================================================
+   3.5 INTERACTIVE CANVAS BACKGROUND (Particle Cosmos Engine)
+   ========================================================================== */
+class InteractiveCanvasBackground {
+  constructor(container) {
+    this.container = container;
+    this.canvas = document.createElement('canvas');
+    this.canvas.id = 'interactive-bg-canvas';
+    this.canvas.style.cssText = 'position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:0;';
+    document.body.prepend(this.canvas);
+
+    this.ctx = this.canvas.getContext('2d');
+    this.width = window.innerWidth;
+    this.height = window.innerHeight;
+
+    this.particles = [];
+    this.shockwaves = [];
+    this.mouse = { x: -1000, y: -1000, targetX: -1000, targetY: -1000 };
+
+    this.colors = ['#00f0ff', '#ff007f', '#a855f7', '#39ff14', '#ffee00'];
+
+    this._resize();
+    this._initParticles();
+    this._bindEvents();
+    this._animate();
   }
 
-  getUserName() {
-    return this.user ? this.user.name : 'Unsynchronized Subject';
+  _resize() {
+    this.width = this.canvas.width = window.innerWidth;
+    this.height = this.canvas.height = window.innerHeight;
+  }
+
+  _initParticles() {
+    const count = Math.floor((this.width * this.height) / 20000);
+    this.particles = [];
+    for (let i = 0; i < count; i++) {
+      this.particles.push({
+        x: Math.random() * this.width,
+        y: Math.random() * this.height,
+        vx: (Math.random() - 0.5) * 0.5,
+        vy: (Math.random() - 0.5) * 0.5,
+        size: Math.random() * 2.5 + 1,
+        color: this.colors[Math.floor(Math.random() * this.colors.length)],
+        alpha: Math.random() * 0.35 + 0.15,
+        pulseSpeed: Math.random() * 0.02 + 0.005,
+        shape: Math.random() > 0.75 ? (Math.random() > 0.5 ? 'diamond' : 'ring') : 'circle'
+      });
+    }
+  }
+
+  _bindEvents() {
+    window.addEventListener('resize', () => this._resize());
+    window.addEventListener('mousemove', (e) => {
+      this.mouse.targetX = e.clientX;
+      this.mouse.targetY = e.clientY;
+    });
+    window.addEventListener('click', (e) => {
+      this.addShockwave(e.clientX, e.clientY);
+    });
+  }
+
+  addShockwave(x, y) {
+    this.shockwaves.push({
+      x, y, radius: 4, maxRadius: 180, alpha: 0.8,
+      color: this.colors[Math.floor(Math.random() * this.colors.length)]
+    });
+  }
+
+  _animate() {
+    this.mouse.x += (this.mouse.targetX - this.mouse.x) * 0.1;
+    this.mouse.y += (this.mouse.targetY - this.mouse.y) * 0.1;
+
+    this.ctx.clearRect(0, 0, this.width, this.height);
+
+    for (let i = this.shockwaves.length - 1; i >= 0; i--) {
+      const sw = this.shockwaves[i];
+      sw.radius += 5.5;
+      sw.alpha *= 0.94;
+      this.ctx.save();
+      this.ctx.beginPath();
+      this.ctx.arc(sw.x, sw.y, sw.radius, 0, Math.PI * 2);
+      this.ctx.strokeStyle = sw.color;
+      this.ctx.globalAlpha = sw.alpha;
+      this.ctx.lineWidth = 2.5;
+      this.ctx.shadowBlur = 12;
+      this.ctx.shadowColor = sw.color;
+      this.ctx.stroke();
+      this.ctx.restore();
+
+      if (sw.alpha < 0.02) this.shockwaves.splice(i, 1);
+    }
+
+    const len = this.particles.length;
+    for (let i = 0; i < len; i++) {
+      const p1 = this.particles[i];
+      for (let j = i + 1; j < len; j++) {
+        const p2 = this.particles[j];
+        const dx = p1.x - p2.x;
+        const dy = p1.y - p2.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist < 105) {
+          const lineAlpha = (1 - dist / 105) * 0.16;
+          this.ctx.beginPath();
+          this.ctx.moveTo(p1.x, p1.y);
+          this.ctx.lineTo(p2.x, p2.y);
+          this.ctx.strokeStyle = p1.color;
+          this.ctx.globalAlpha = lineAlpha;
+          this.ctx.lineWidth = 0.8;
+          this.ctx.stroke();
+        }
+      }
+    }
+
+    for (let i = 0; i < len; i++) {
+      const p = this.particles[i];
+
+      const mdx = p.x - this.mouse.x;
+      const mdy = p.y - this.mouse.y;
+      const mdist = Math.sqrt(mdx * mdx + mdy * mdy);
+      if (mdist < 120) {
+        const force = (120 - mdist) / 120;
+        p.x += (mdx / mdist) * force * 2.5;
+        p.y += (mdy / mdist) * force * 2.5;
+      }
+
+      p.x += p.vx;
+      p.y += p.vy;
+
+      if (p.x < 0) p.x = this.width;
+      if (p.x > this.width) p.x = 0;
+      if (p.y < 0) p.y = this.height;
+      if (p.y > this.height) p.y = 0;
+
+      p.alpha += Math.sin(Date.now() * p.pulseSpeed) * 0.005;
+      const currentAlpha = Math.max(0.08, Math.min(0.65, p.alpha));
+
+      this.ctx.save();
+      this.ctx.globalAlpha = currentAlpha;
+      this.ctx.fillStyle = p.color;
+      this.ctx.shadowBlur = 10;
+      this.ctx.shadowColor = p.color;
+
+      if (p.shape === 'diamond') {
+        this.ctx.beginPath();
+        this.ctx.moveTo(p.x, p.y - p.size * 1.5);
+        this.ctx.lineTo(p.x + p.size * 1.5, p.y);
+        this.ctx.lineTo(p.x, p.y + p.size * 1.5);
+        this.ctx.lineTo(p.x - p.size * 1.5, p.y);
+        this.ctx.closePath();
+        this.ctx.fill();
+      } else if (p.shape === 'ring') {
+        this.ctx.beginPath();
+        this.ctx.arc(p.x, p.y, p.size * 1.4, 0, Math.PI * 2);
+        this.ctx.strokeStyle = p.color;
+        this.ctx.lineWidth = 1;
+        this.ctx.stroke();
+      } else {
+        this.ctx.beginPath();
+        this.ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        this.ctx.fill();
+      }
+      this.ctx.restore();
+    }
+
+    requestAnimationFrame(() => this._animate());
   }
 }
 
 
 /* ==========================================================================
-   4. THREE.JS 3D SCENE & ANIMUS VOID ENGINE
+   4. CARD SCENE — 2D Animated Card Grid (replaces Three.js 3D scene)
    ========================================================================== */
-class ThreeAnimusScene {
+
+// Category color palette — Cyberpunk Synthwave Hues
+const CAT_COLORS = {
+  CODEX:      { bg: 'rgba(0,240,255,0.12)', border: '#00f0ff', badge: 'linear-gradient(135deg,#00f0ff,#0077ff)', text: '#00f0ff', glow: 'rgba(0,240,255,0.4)', tag: '[CODEX_CORE]' },
+  TECH:       { bg: 'rgba(255,0,127,0.12)', border: '#ff007f', badge: 'linear-gradient(135deg,#ff007f,#9d4edd)', text: '#ff007f', glow: 'rgba(255,0,127,0.4)', tag: '[NEON_GRID]' },
+  LORE:       { bg: 'rgba(168,85,247,0.12)', border: '#a855f7', badge: 'linear-gradient(135deg,#a855f7,#ff007f)', text: '#a855f7', glow: 'rgba(168,85,247,0.4)', tag: '[ARCHIVE_DATA]' },
+  PHILOSOPHY: { bg: 'rgba(57,255,20,0.12)',  border: '#39ff14', badge: 'linear-gradient(135deg,#39ff14,#00f0ff)', text: '#39ff14', glow: 'rgba(57,255,20,0.4)', tag: '[QUANTUM_LOGIC]' },
+};
+
+function getCatStyle(cat) {
+  return CAT_COLORS[cat?.toUpperCase()] || CAT_COLORS.CODEX;
+}
+
+class CardScene {
   constructor(containerElement, onPostSelected, onPostHover) {
     this.container = containerElement;
     this.onPostSelected = onPostSelected;
     this.onPostHover = onPostHover;
 
-    this.scene = null;
-    this.camera = null;
-    this.renderer = null;
-    this.controls = null;
-    this.raycaster = new THREE.Raycaster();
-    this.mouse = new THREE.Vector2(-999, -999);
-
-    this.postMeshes = []; // { mesh, postData, originalPos, originalRot, codexMaterials, shardMaterials }
-    this.hoveredObject = null;
-    this.selectedPostMesh = null;
+    this.posts = [];
     this.activeFilter = 'ALL';
     this.searchQuery = '';
 
-    // Camera default overview coordinates
-    this.defaultCameraPos = new THREE.Vector3(0, 16, 44);
-    this.defaultTarget = new THREE.Vector3(0, 0, 0);
-
-    // Camera animation tween state
-    this.cameraTween = {
-      active: false,
-      startTime: 0,
-      duration: 1200,
-      startPos: new THREE.Vector3(),
-      targetPos: new THREE.Vector3(),
-      startLookAt: new THREE.Vector3(),
-      targetLookAt: new THREE.Vector3(),
-      onComplete: null
-    };
-
-    this.clock = new THREE.Clock();
-    this.init();
+    this.bgCanvas = new InteractiveCanvasBackground(this.container);
+    this._buildGrid();
   }
 
-  init() {
-    // 1. Scene Setup
-    this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color(0x06090e); // Deep Obsidian Animus Void
-    this.scene.fog = new THREE.FogExp2(0x06090e, 0.012);
+  _buildGrid() {
+    this.container.style.cssText = `
+      position: absolute; inset: 0;
+      overflow-y: auto; overflow-x: hidden;
+      padding: 90px 24px 100px;
+      display: flex; flex-direction: column; align-items: center;
+      z-index: 1; perspective: 1200px;
+    `;
 
-    // 2. Camera Setup
-    const width = this.container.clientWidth;
-    const height = this.container.clientHeight;
-    this.camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
-    this.camera.position.copy(this.defaultCameraPos);
+    this.grid = document.createElement('div');
+    this.grid.id = 'ds-card-grid';
+    this.grid.style.cssText = `
+      width: 100%; max-width: 1200px;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 22px;
+    `;
+    this.container.appendChild(this.grid);
 
-    // 3. Renderer Setup
-    this.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
-    this.renderer.setSize(width, height);
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    this.renderer.shadowMap.enabled = true;
-    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    this.container.appendChild(this.renderer.domElement);
-
-    // 4. OrbitControls with smooth damping
-    this.controls = new OrbitControls(this.camera, this.renderer.domElement);
-    this.controls.enableDamping = true;
-    this.controls.dampingFactor = 0.05;
-    this.controls.maxDistance = 85;
-    this.controls.minDistance = 6;
-    this.controls.maxPolarAngle = Math.PI / 2 + 0.12;
-    this.controls.target.copy(this.defaultTarget);
-
-    // 5. Lighting Setup
-    this.setupLighting();
-
-    // 6. Animus Void Environment (Infinite Grid, DNA helix, dust particles)
-    this.setupAnimusEnvironment();
-
-    // 7. Event Listeners
-    window.addEventListener('resize', () => this.onWindowResize());
-    this.renderer.domElement.addEventListener('pointermove', (e) => this.onPointerMove(e));
-    this.renderer.domElement.addEventListener('click', (e) => this.onPointerClick(e));
-
-    // 8. Start Render Loop
-    this.animate();
+    this.emptyState = document.createElement('div');
+    this.emptyState.style.cssText = `
+      display: none; flex-direction: column; align-items: center; justify-content: center;
+      gap: 12px; padding: 60px 20px; color: #8b9bb4;
+      font-family: 'Rajdhani', sans-serif; font-size: 22px; text-align: center;
+    `;
+    this.emptyState.innerHTML = `<div style="font-size:48px;">📡</div><div>NO QUANTUM NODES FOUND…<br><span style="font-size:15px;opacity:0.6;font-family:'Fira Code',monospace;">[ERR 404: ARCHIVE_NOT_FOUND]</span></div>`;
+    this.container.appendChild(this.emptyState);
   }
 
-  setupLighting() {
-    // Ambient cyan luminescence
-    const ambientLight = new THREE.AmbientLight(0x0a2238, 1.8);
-    this.scene.add(ambientLight);
+  _makeCard(post) {
+    const cs = getCatStyle(post.category);
+    const card = document.createElement('article');
+    card.className = 'ds-post-card';
+    card.dataset.postId = post.id;
 
-    // Primary directional Animus spotlight
-    const dirLight = new THREE.DirectionalLight(0x00f0ff, 2.2);
-    dirLight.position.set(25, 40, 20);
-    dirLight.castShadow = true;
-    dirLight.shadow.mapSize.width = 1024;
-    dirLight.shadow.mapSize.height = 1024;
-    dirLight.shadow.bias = -0.001;
-    this.scene.add(dirLight);
+    card.style.cssText = `
+      background: rgba(18, 16, 36, 0.82);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid ${cs.border}55;
+      border-radius: 16px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.08);
+      padding: 24px;
+      cursor: pointer;
+      transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.4s ease, border-color 0.3s;
+      position: relative;
+      overflow: hidden;
+      transform-style: preserve-3d;
+      animation: card-in 0.45s cubic-bezier(0.34,1.56,0.64,1) both;
+    `;
 
-    // Warm golden secondary rim light for historical contrast
-    const rimLight = new THREE.DirectionalLight(0xe5a93b, 1.2);
-    rimLight.position.set(-30, 20, -25);
-    this.scene.add(rimLight);
+    // Top neon accent light line
+    const accent = document.createElement('div');
+    accent.style.cssText = `
+      position: absolute; top: 0; left: 0; right: 0; height: 3px;
+      background: ${cs.badge}; box-shadow: 0 0 12px ${cs.glow};
+    `;
+    card.appendChild(accent);
 
-    // Center holographic point light
-    const centerGlow = new THREE.PointLight(0x00f0ff, 2.5, 60);
-    centerGlow.position.set(0, 4, 0);
-    this.scene.add(centerGlow);
-  }
+    // Specular shine glare element
+    const shine = document.createElement('div');
+    shine.style.cssText = `
+      position: absolute; inset: 0; pointer-events: none; border-radius: 16px;
+      background: radial-gradient(circle at 50% 50%, rgba(255,255,255,0.18) 0%, transparent 60%);
+      opacity: 0; transition: opacity 0.3s ease; z-index: 2;
+    `;
+    card.appendChild(shine);
 
-  setupAnimusEnvironment() {
-    // 1. Procedural Animus Infinite Memory Grid Floor
-    const gridCanvas = document.createElement('canvas');
-    gridCanvas.width = 1024;
-    gridCanvas.height = 1024;
-    const gctx = gridCanvas.getContext('2d');
+    // Category badge + stamp
+    const topRow = document.createElement('div');
+    topRow.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;margin-top:4px;';
+    topRow.innerHTML = `
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span style="
+          display:inline-flex;align-items:center;
+          font-family:'Fira Code',monospace;font-size:11px;font-weight:600;
+          padding:4px 10px;border-radius:6px;
+          background:${cs.bg};color:${cs.text};
+          border:1px solid ${cs.border}88;
+          box-shadow:0 0 10px ${cs.glow};
+          letter-spacing:0.04em;
+        ">${cs.tag}</span>
+      </div>
+      <span style="font-size:22px;line-height:1;filter:drop-shadow(0 0 8px ${cs.glow});transition:transform 0.3s ease;" class="card-stamp">${post.stamp || '⚡'}</span>
+    `;
+    card.appendChild(topRow);
 
-    gctx.fillStyle = '#06090e';
-    gctx.fillRect(0, 0, 1024, 1024);
+    // Title in Orbitron font
+    const title = document.createElement('h3');
+    title.style.cssText = `
+      font-family:'Orbitron',sans-serif;font-size:17px;font-weight:700;
+      letter-spacing:0.03em;color:#f1f5f9;line-height:1.35;margin-bottom:12px;
+      display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
+    `;
+    title.textContent = post.title;
+    card.appendChild(title);
 
-    // High-tech Cyan coordinate grid
-    gctx.strokeStyle = 'rgba(0, 240, 255, 0.25)';
-    gctx.lineWidth = 1.5;
-    const step = 64;
-    for (let x = 0; x <= 1024; x += step) {
-      gctx.beginPath();
-      gctx.moveTo(x, 0);
-      gctx.lineTo(x, 1024);
-      gctx.stroke();
-    }
-    for (let y = 0; y <= 1024; y += step) {
-      gctx.beginPath();
-      gctx.moveTo(0, y);
-      gctx.lineTo(1024, y);
-      gctx.stroke();
-    }
+    // Content preview in Syne font
+    const preview = document.createElement('p');
+    preview.style.cssText = `
+      font-family:'Syne',sans-serif;font-size:13.5px;color:#8b9bb4;
+      line-height:1.6;margin-bottom:16px;
+      display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;
+    `;
+    preview.textContent = post.content.split('\n\n')[0].substring(0, 140) + '…';
+    card.appendChild(preview);
 
-    // Secondary fine dot grid with Ben-Day comic dots
-    gctx.fillStyle = 'rgba(0, 240, 255, 0.4)';
-    for (let x = step / 2; x < 1024; x += step) {
-      for (let y = step / 2; y < 1024; y += step) {
-        gctx.beginPath();
-        gctx.arc(x, y, 2.5, 0, Math.PI * 2);
-        gctx.fill();
-      }
-    }
-
-    // Glowing Animus concentric memory rings
-    gctx.strokeStyle = 'rgba(0, 240, 255, 0.5)';
-    gctx.lineWidth = 2;
-    [120, 240, 360, 480].forEach(r => {
-      gctx.beginPath();
-      gctx.arc(512, 512, r, 0, Math.PI * 2);
-      gctx.stroke();
-    });
-
-    // Renaissance Assassin compass rose markings in center
-    gctx.strokeStyle = 'rgba(229, 169, 59, 0.6)';
-    gctx.lineWidth = 3;
-    gctx.beginPath();
-    gctx.arc(512, 512, 60, 0, Math.PI * 2);
-    gctx.stroke();
-    gctx.beginPath();
-    gctx.moveTo(512, 430); gctx.lineTo(512, 594);
-    gctx.moveTo(430, 512); gctx.lineTo(594, 512);
-    gctx.stroke();
-
-    const gridTex = new THREE.CanvasTexture(gridCanvas);
-    gridTex.wrapS = THREE.RepeatWrapping;
-    gridTex.wrapT = THREE.RepeatWrapping;
-    gridTex.repeat.set(10, 10);
-
-    const floorGeo = new THREE.PlaneGeometry(180, 180);
-    const floorMat = new THREE.MeshStandardMaterial({
-      map: gridTex,
-      roughness: 0.85,
-      metalness: 0.3
-    });
-    const floor = new THREE.Mesh(floorGeo, floorMat);
-    floor.rotation.x = -Math.PI / 2;
-    floor.position.y = -10;
-    floor.receiveShadow = true;
-    this.scene.add(floor);
-
-    // 2. Animus DNA Data Stream (Double Helix of Floating Light)
-    const helixGroup = new THREE.Group();
-    const strandCount = 100;
-    const helixRadius = 14;
-    const helixHeight = 50;
-
-    const dotGeo = new THREE.SphereGeometry(0.18, 8, 8);
-    const cyanMat = new THREE.MeshBasicMaterial({ color: 0x00f0ff });
-    const amberMat = new THREE.MeshBasicMaterial({ color: 0xe5a93b });
-
-    for (let i = 0; i < strandCount; i++) {
-      const t = i / strandCount;
-      const angle = t * Math.PI * 8;
-      const y = t * helixHeight - 10;
-
-      // Strand A
-      const dotA = new THREE.Mesh(dotGeo, cyanMat);
-      dotA.position.set(Math.cos(angle) * helixRadius, y, Math.sin(angle) * helixRadius);
-      helixGroup.add(dotA);
-
-      // Strand B
-      const dotB = new THREE.Mesh(dotGeo, amberMat);
-      dotB.position.set(Math.cos(angle + Math.PI) * helixRadius, y, Math.sin(angle + Math.PI) * helixRadius);
-      helixGroup.add(dotB);
-    }
-    this.scene.add(helixGroup);
-    this.helixGroup = helixGroup;
-
-    // 3. Floating Animus Memory Dust & Doodle Crosshairs
-    const particleCount = 140;
-    const pGroup = new THREE.Group();
-    const pGeos = [
-      new THREE.OctahedronGeometry(0.35, 0),
-      new THREE.TetrahedronGeometry(0.3, 0),
-      new THREE.RingGeometry(0.2, 0.35, 6)
-    ];
-    const pMats = [
-      new THREE.MeshBasicMaterial({ color: 0x00f0ff }),
-      new THREE.MeshBasicMaterial({ color: 0xe5a93b }),
-      new THREE.MeshBasicMaterial({ color: 0xffffff })
-    ];
-
-    this.floatingParticles = [];
-    for (let i = 0; i < particleCount; i++) {
-      const geo = pGeos[Math.floor(Math.random() * pGeos.length)];
-      const mat = pMats[Math.floor(Math.random() * pMats.length)];
-      const mesh = new THREE.Mesh(geo, mat);
-
-      mesh.position.set(
-        (Math.random() - 0.5) * 80,
-        (Math.random() - 0.5) * 35 + 5,
-        (Math.random() - 0.5) * 80
-      );
-      mesh.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, 0);
-
-      pGroup.add(mesh);
-      this.floatingParticles.push({
-        mesh,
-        rotSpeed: (Math.random() - 0.5) * 0.02,
-        floatOffset: Math.random() * Math.PI * 2
+    // Tags
+    if (post.tags && post.tags.length > 0) {
+      const tagRow = document.createElement('div');
+      tagRow.style.cssText = 'display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px;';
+      post.tags.slice(0, 3).forEach(tag => {
+        const t = document.createElement('span');
+        t.style.cssText = `
+          font-family:'Fira Code',monospace;font-size:11px;
+          padding:3px 8px;border-radius:4px;
+          background:rgba(255,255,255,0.04);color:#a0aec0;
+          border:1px solid rgba(255,255,255,0.08);
+          transition:all 0.2s;
+        `;
+        t.textContent = `#${tag}`;
+        tagRow.appendChild(t);
       });
-    }
-    this.scene.add(pGroup);
-  }
-
-  /**
-   * Generates procedural canvas textures:
-   * 1. Animus Cyber-Doodle Shard Texture (Cyan/Ink comic aesthetic)
-   * 2. Historical Codex Parchment Texture (Leonardo Da Vinci sketch manuscript)
-   */
-  generateFragmentTextures(post) {
-    // -------------------------------------------------------------
-    // A. ANIMUS SHARD TEXTURE (Cyber Void + Comic Doodle Hatching)
-    // -------------------------------------------------------------
-    const shardCanvas = document.createElement('canvas');
-    shardCanvas.width = 512;
-    shardCanvas.height = 720;
-    const sctx = shardCanvas.getContext('2d');
-
-    // Dark cyber-void background with cyan perimeter
-    sctx.fillStyle = '#0a0f18';
-    sctx.fillRect(0, 0, 512, 720);
-
-    // Halftone Ben-Day dot pattern
-    sctx.fillStyle = 'rgba(0, 240, 255, 0.12)';
-    for (let x = 12; x < 512; x += 18) {
-      for (let y = 12; y < 720; y += 18) {
-        sctx.beginPath();
-        sctx.arc(x, y, 2.2, 0, Math.PI * 2);
-        sctx.fill();
-      }
+      card.appendChild(tagRow);
     }
 
-    // Heavy Ink Border with Tech Brackets
-    sctx.strokeStyle = '#00f0ff';
-    sctx.lineWidth = 6;
-    sctx.strokeRect(16, 16, 480, 688);
+    // Footer row: author, read time, likes
+    const footer = document.createElement('div');
+    footer.style.cssText = `
+      display:flex;align-items:center;justify-content:space-between;
+      padding-top:14px;border-top:1px solid rgba(255,255,255,0.06);
+    `;
 
-    sctx.strokeStyle = '#e5a93b';
-    sctx.lineWidth = 3;
-    sctx.strokeRect(26, 26, 460, 668);
+    const avatarLetter = (post.author || 'A')[0].toUpperCase();
+    const authorSide = document.createElement('div');
+    authorSide.style.cssText = 'display:flex;align-items:center;gap:10px;';
+    authorSide.innerHTML = `
+      <div style="
+        width:30px;height:30px;border-radius:8px;
+        background:${cs.badge};box-shadow:0 0 10px ${cs.glow};
+        display:flex;align-items:center;justify-content:center;
+        font-family:'Orbitron',sans-serif;font-size:12px;font-weight:700;color:#fff;
+        flex-shrink:0;
+      ">${avatarLetter}</div>
+      <div>
+        <div style="font-family:'Rajdhani',sans-serif;font-size:15px;font-weight:700;color:#f1f5f9;line-height:1;">${post.author}</div>
+        <div style="font-family:'Fira Code',monospace;font-size:10px;color:#8b9bb4;">${post.readTime}</div>
+      </div>
+    `;
+    footer.appendChild(authorSide);
 
-    // Assassin Brotherhood Crest Doodle Watermark
-    sctx.strokeStyle = 'rgba(0, 240, 255, 0.25)';
-    sctx.lineWidth = 4;
-    sctx.beginPath();
-    sctx.moveTo(256, 160);
-    sctx.lineTo(170, 360);
-    sctx.lineTo(210, 360);
-    sctx.lineTo(256, 240);
-    sctx.lineTo(302, 360);
-    sctx.lineTo(342, 360);
-    sctx.closePath();
-    sctx.stroke();
+    const metaSide = document.createElement('div');
+    metaSide.style.cssText = 'display:flex;align-items:center;gap:12px;';
+    metaSide.innerHTML = `
+      <span style="font-family:'Fira Code',monospace;font-size:12px;color:#8b9bb4;display:flex;align-items:center;gap:4px;">
+        ⚡ <span class="card-like-count-${post.id}" style="font-weight:600;color:#f1f5f9;">${post.likes}</span>
+      </span>
+      <span style="font-family:'Fira Code',monospace;font-size:12px;color:#8b9bb4;display:flex;align-items:center;gap:4px;">
+        💬 ${(post.comments || []).length}
+      </span>
+    `;
+    footer.appendChild(metaSide);
+    card.appendChild(footer);
 
-    // Category / Memory Sequence Pill
-    sctx.fillStyle = '#00f0ff';
-    sctx.fillRect(45, 55, 180, 38);
-    sctx.fillStyle = '#06090e';
-    sctx.font = 'bold 20px "Share Tech Mono", monospace';
-    sctx.fillText(`// ${post.category}`, 60, 81);
+    // Read post CTA overlay on hover
+    const cta = document.createElement('div');
+    cta.className = 'card-cta';
+    cta.style.cssText = `
+      position:absolute;inset:0;border-radius:16px;
+      background:rgba(6,6,14,0.75);backdrop-filter:blur(6px);
+      display:flex;align-items:center;justify-content:center;
+      opacity:0;transition:opacity 0.25s;pointer-events:none;z-index:3;
+    `;
+    cta.innerHTML = `<span style="
+      font-family:'Orbitron',sans-serif;font-size:13px;font-weight:700;letter-spacing:0.08em;
+      background:${cs.badge};color:#fff;padding:9px 22px;border-radius:30px;
+      box-shadow:0 0 20px ${cs.glow};border:1px solid ${cs.border};
+      text-transform:uppercase;
+    ">DECRYPT ARCHIVE ⚡</span>`;
+    card.appendChild(cta);
 
-    // Title (multi-line wrapped)
-    sctx.fillStyle = '#ffffff';
-    sctx.font = 'bold 36px "Cinzel", serif';
-    sctx.textAlign = 'left';
+    // 3D Tilt & Specular Reflection event listeners
+    card.addEventListener('mousemove', (e) => {
+      soundFX.playHover();
+      const rect = card.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      const centerX = rect.width / 2;
+      const centerY = rect.height / 2;
 
-    const words = post.title.split(' ');
-    let line = '';
-    let curY = 440;
-    for (let n = 0; n < words.length; n++) {
-      const testLine = line + words[n] + ' ';
-      const metrics = sctx.measureText(testLine);
-      if (metrics.width > 420 && n > 0) {
-        sctx.fillText(line, 48, curY);
-        line = words[n] + ' ';
-        curY += 46;
-      } else {
-        line = testLine;
-      }
-    }
-    sctx.fillText(line, 48, curY);
+      const rotX = ((y - centerY) / centerY) * -12;
+      const rotY = ((x - centerX) / centerX) * 12;
 
-    // Scribe / Author & Stamp
-    sctx.fillStyle = '#e5a93b';
-    sctx.font = 'bold 22px "Kalam", cursive';
-    sctx.fillText(`✍ ${post.author}`, 48, curY + 60);
+      card.style.transform = `perspective(1000px) rotateX(${rotX}deg) rotateY(${rotY}deg) translateZ(12px) scale(1.025)`;
+      card.style.boxShadow = `0 20px 50px rgba(0,0,0,0.7), 0 0 35px ${cs.glow}`;
+      card.style.borderColor = cs.border;
 
-    sctx.font = '72px serif';
-    sctx.textAlign = 'center';
-    sctx.fillText(post.stamp || '🦅', 420, 110);
+      shine.style.opacity = '1';
+      shine.style.background = `radial-gradient(circle at ${x}px ${y}px, rgba(255,255,255,0.22) 0%, transparent 65%)`;
+      cta.style.opacity = '1';
 
-    // -------------------------------------------------------------
-    // B. HISTORICAL CODEX PARCHMENT TEXTURE (Leonardo Da Vinci Folio)
-    // -------------------------------------------------------------
-    const codexCanvas = document.createElement('canvas');
-    codexCanvas.width = 512;
-    codexCanvas.height = 720;
-    const cctx = codexCanvas.getContext('2d');
-
-    // Weathered parchment base
-    cctx.fillStyle = '#f7f1df';
-    cctx.fillRect(0, 0, 512, 720);
-
-    // Sepia aged paper vignettes
-    const radGrad = cctx.createRadialGradient(256, 360, 100, 256, 360, 360);
-    radGrad.addColorStop(0, 'rgba(247, 241, 223, 0)');
-    radGrad.addColorStop(1, 'rgba(180, 140, 80, 0.45)');
-    cctx.fillStyle = radGrad;
-    cctx.fillRect(0, 0, 512, 720);
-
-    // Hand-drawn double ink margin lines
-    cctx.strokeStyle = '#1c150e';
-    cctx.lineWidth = 4;
-    cctx.strokeRect(20, 20, 472, 680);
-    cctx.lineWidth = 1.5;
-    cctx.strokeRect(28, 28, 456, 664);
-
-    // Ruled manuscript sketch lines
-    cctx.strokeStyle = 'rgba(75, 56, 39, 0.2)';
-    cctx.lineWidth = 1.2;
-    for (let y = 140; y < 650; y += 32) {
-      cctx.beginPath();
-      cctx.moveTo(35, y);
-      cctx.lineTo(475, y);
-      cctx.stroke();
-    }
-
-    // Leonardo's Hand-drawn Flying Machine / Compass doodle sketch in center
-    cctx.strokeStyle = '#4b3827';
-    cctx.lineWidth = 2;
-    cctx.beginPath();
-    cctx.arc(256, 260, 70, 0, Math.PI * 2);
-    cctx.moveTo(256, 170); cctx.lineTo(256, 350);
-    cctx.moveTo(170, 260); cctx.lineTo(342, 260);
-    cctx.stroke();
-
-    // Mirror-script Latin / Italian doodle text
-    cctx.fillStyle = 'rgba(28, 21, 14, 0.85)';
-    cctx.font = 'italic 16px "Kalam", cursive';
-    cctx.fillText('~ Cogito ergo virtus in tenebris ~', 130, 380);
-
-    // Red Wax Brotherhood Seal
-    cctx.fillStyle = '#9b2226';
-    cctx.beginPath();
-    cctx.arc(430, 620, 36, 0, Math.PI * 2);
-    cctx.fill();
-    cctx.strokeStyle = '#1c150e';
-    cctx.lineWidth = 3;
-    cctx.stroke();
-    cctx.fillStyle = '#ffffff';
-    cctx.font = 'bold 24px "Cinzel", serif';
-    cctx.textAlign = 'center';
-    cctx.fillText('⚜', 430, 628);
-
-    // Title on Codex
-    cctx.fillStyle = '#1c150e';
-    cctx.font = 'bold 30px "Cinzel", serif';
-    cctx.textAlign = 'left';
-    cctx.fillText(post.title.substring(0, 26) + (post.title.length > 26 ? '...' : ''), 45, 90);
-
-    const shardTex = new THREE.CanvasTexture(shardCanvas);
-    const codexTex = new THREE.CanvasTexture(codexCanvas);
-
-    return { shardTex, codexTex };
-  }
-
-  /**
-   * Creates a 3D Animus Memory Fragment mesh
-   */
-  createPostMesh(post, position, index) {
-    const { shardTex, codexTex } = this.generateFragmentTextures(post);
-
-    // Faceted Memory Fragment Geometry (Box representing codex shard)
-    const bookGeo = new THREE.BoxGeometry(4.8, 6.8, 1.0);
-
-    // Shard Materials (Active Animus Cyber style)
-    const shardMaterials = [
-      new THREE.MeshStandardMaterial({ color: 0x0f1726, roughness: 0.5, metalness: 0.8 }), // Right
-      new THREE.MeshStandardMaterial({ color: 0x00f0ff, roughness: 0.3, metalness: 0.9, emissive: 0x00f0ff, emissiveIntensity: 0.2 }), // Spine
-      new THREE.MeshStandardMaterial({ color: 0x0f1726, roughness: 0.5 }), // Top
-      new THREE.MeshStandardMaterial({ color: 0x0f1726, roughness: 0.5 }), // Bottom
-      new THREE.MeshStandardMaterial({ map: shardTex, roughness: 0.4, metalness: 0.2 }), // Front (Shard)
-      new THREE.MeshStandardMaterial({ color: 0x070a0f, roughness: 0.8 })  // Back
-    ];
-
-    // Codex Materials (Unfolded Historical Manuscript style)
-    const codexMaterials = [
-      new THREE.MeshStandardMaterial({ color: 0xecdcb9, roughness: 0.9 }),
-      new THREE.MeshStandardMaterial({ color: 0x4b3827, roughness: 0.8 }),
-      new THREE.MeshStandardMaterial({ color: 0xecdcb9, roughness: 0.9 }),
-      new THREE.MeshStandardMaterial({ color: 0xecdcb9, roughness: 0.9 }),
-      new THREE.MeshStandardMaterial({ map: codexTex, roughness: 0.9 }),
-      new THREE.MeshStandardMaterial({ color: 0xe8dbba, roughness: 0.9 })
-    ];
-
-    const bookMesh = new THREE.Mesh(bookGeo, shardMaterials);
-    bookMesh.castShadow = true;
-    bookMesh.receiveShadow = true;
-
-    // Heavy-ink Cel Outline (Inverted Hull)
-    const outlineGeo = new THREE.BoxGeometry(5.08, 7.08, 1.25);
-    const outlineMat = new THREE.MeshBasicMaterial({
-      color: 0x00f0ff,
-      side: THREE.BackSide,
-      wireframe: false
+      const stampEl = card.querySelector('.card-stamp');
+      if (stampEl) stampEl.style.transform = 'scale(1.25) rotate(10deg)';
     });
-    const outlineMesh = new THREE.Mesh(outlineGeo, outlineMat);
-    bookMesh.add(outlineMesh);
-    bookMesh.outlineMesh = outlineMesh;
 
-    // Floating Animus Crest / Category Hologram Badge above fragment
-    const badgeGeo = new THREE.PlaneGeometry(1.6, 1.6);
-    const badgeCanvas = document.createElement('canvas');
-    badgeCanvas.width = 128;
-    badgeCanvas.height = 128;
-    const bctx = badgeCanvas.getContext('2d');
-    bctx.fillStyle = 'rgba(10, 15, 24, 0.9)';
-    bctx.beginPath();
-    bctx.arc(64, 64, 58, 0, Math.PI * 2);
-    bctx.fill();
-    bctx.strokeStyle = '#00f0ff';
-    bctx.lineWidth = 6;
-    bctx.stroke();
-    bctx.font = '60px serif';
-    bctx.textAlign = 'center';
-    bctx.fillText(post.stamp || '🦅', 64, 85);
+    card.addEventListener('mouseleave', () => {
+      card.style.transform = 'perspective(1000px) rotateX(0deg) rotateY(0deg) translateZ(0px) scale(1)';
+      card.style.boxShadow = '0 8px 32px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.08)';
+      card.style.borderColor = cs.border + '55';
+      shine.style.opacity = '0';
+      cta.style.opacity = '0';
 
-    const badgeTex = new THREE.CanvasTexture(badgeCanvas);
-    const badgeMat = new THREE.MeshBasicMaterial({
-      map: badgeTex,
-      transparent: true,
-      side: THREE.DoubleSide
+      const stampEl = card.querySelector('.card-stamp');
+      if (stampEl) stampEl.style.transform = 'none';
     });
-    const badgeMesh = new THREE.Mesh(badgeGeo, badgeMat);
-    badgeMesh.position.y = 4.8;
-    bookMesh.add(badgeMesh);
-    bookMesh.badgeMesh = badgeMesh;
 
-    // Position & Orientation
-    bookMesh.position.copy(position);
-    const rotY = (index % 2 === 0 ? 0.25 : -0.25) + (Math.random() - 0.5) * 0.15;
-    const rotZ = (Math.random() - 0.5) * 0.08;
-    bookMesh.rotation.set(0, rotY, rotZ);
+    card.addEventListener('click', () => {
+      soundFX.playClick();
+      this.onPostSelected(post);
+    });
 
-    bookMesh.userData = {
-      id: post.id,
-      postData: post,
-      originalPos: position.clone(),
-      originalRot: new THREE.Euler(0, rotY, rotZ),
-      bobPhase: index * 1.1,
-      codexMaterials,
-      shardMaterials,
-      isCodexMode: false
-    };
-
-    this.scene.add(bookMesh);
-    return bookMesh;
+    return card;
   }
 
-  /**
-   * Populate 3D Scene with initial post fragments arranged in an orbital Animus corridor
-   */
   loadPosts(posts) {
-    // Clear existing meshes
-    this.postMeshes.forEach(item => {
-      this.scene.remove(item.mesh);
-    });
-    this.postMeshes = [];
-
-    const total = posts.length;
-    posts.forEach((post, index) => {
-      // Cylindrical / orbital corridor formation in the void
-      const angle = (index / total) * Math.PI * 2;
-      const radius = 18 + (index % 2) * 5;
-      const x = Math.sin(angle) * radius;
-      const z = Math.cos(angle) * radius;
-      const y = (index % 3 - 1) * 4.5 + (Math.random() - 0.5) * 2;
-
-      const pos = new THREE.Vector3(x, y, z);
-      const mesh = this.createPostMesh(post, pos, index);
-
-      this.postMeshes.push({
-        mesh,
-        postData: post,
-        originalPos: pos.clone(),
-        originalRot: mesh.userData.originalRot.clone()
-      });
-    });
+    this.posts = posts;
+    this._render();
   }
 
-  /**
-   * Dynamically spawns a new post fragment into the Animus Void with particle burst
-   */
   addNewPost(post) {
-    const angle = Math.random() * Math.PI * 2;
-    const radius = 17;
-    const x = Math.sin(angle) * radius;
-    const z = Math.cos(angle) * radius;
-    const y = 0;
-
-    const pos = new THREE.Vector3(x, y, z);
-    const mesh = this.createPostMesh(post, pos, this.postMeshes.length);
-
-    this.postMeshes.unshift({
-      mesh,
-      postData: post,
-      originalPos: pos.clone(),
-      originalRot: mesh.userData.originalRot.clone()
-    });
-
-    // Particle burst at spawn position
-    this.createSpawnBurst(pos);
-
-    // Focus camera onto newly synchronized memory
-    this.focusPost(mesh);
+    this.posts.unshift(post);
+    this._render();
+    // Scroll to top to show new card
+    this.container.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
-  createSpawnBurst(position) {
-    soundFX.playSync();
-    const burstGroup = new THREE.Group();
-    const count = 35;
-    const geo = new THREE.OctahedronGeometry(0.3, 0);
-    const mat = new THREE.MeshBasicMaterial({ color: 0x00f0ff });
-
-    for (let i = 0; i < count; i++) {
-      const p = new THREE.Mesh(geo, mat);
-      p.position.copy(position);
-      p.userData = {
-        vel: new THREE.Vector3(
-          (Math.random() - 0.5) * 8,
-          (Math.random() - 0.5) * 8,
-          (Math.random() - 0.5) * 8
-        )
-      };
-      burstGroup.add(p);
-    }
-    this.scene.add(burstGroup);
-
-    let life = 0;
-    const animateBurst = () => {
-      life += 0.03;
-      burstGroup.children.forEach(p => {
-        p.position.addScaledVector(p.userData.vel, 0.03);
-        p.scale.multiplyScalar(0.95);
-      });
-      if (life < 1.0) {
-        requestAnimationFrame(animateBurst);
-      } else {
-        this.scene.remove(burstGroup);
-      }
-    };
-    animateBurst();
-  }
-
-  /**
-   * Smoothly transitions the 3D fragment between Animus Cyber Shard and Historical Codex
-   */
-  transitionToCodex(mesh, toCodex = true) {
-    if (!mesh || !mesh.userData) return;
-    mesh.userData.isCodexMode = toCodex;
-    mesh.material = toCodex ? mesh.userData.codexMaterials : mesh.userData.shardMaterials;
-
-    if (mesh.outlineMesh) {
-      mesh.outlineMesh.material.color.setHex(toCodex ? 0x1c150e : 0x00f0ff);
-    }
-    if (toCodex) {
-      soundFX.playParchmentRustle();
-    }
-  }
-
-  /**
-   * Raycasting & Pointer Movement
-   */
-  onPointerMove(event) {
-    const rect = this.renderer.domElement.getBoundingClientRect();
-    this.mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
-    this.mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
-
-    this.checkHover(event.clientX, event.clientY);
-  }
-
-  checkHover(clientX, clientY) {
-    if (this.cameraTween.active) return;
-
-    this.raycaster.setFromCamera(this.mouse, this.camera);
-    const interactiveMeshes = this.postMeshes
-      .filter(item => item.mesh.visible)
-      .map(item => item.mesh);
-
-    const intersects = this.raycaster.intersectObjects(interactiveMeshes, false);
-
-    if (intersects.length > 0) {
-      const hitMesh = intersects[0].object;
-      if (this.hoveredObject !== hitMesh) {
-        // Reset previous hover
-        if (this.hoveredObject && this.hoveredObject !== this.selectedPostMesh) {
-          this.setHoverState(this.hoveredObject, false);
-        }
-        this.hoveredObject = hitMesh;
-        this.setHoverState(hitMesh, true);
-        soundFX.playGlitch();
-      }
-      this.onPostHover(hitMesh.userData.postData, clientX, clientY);
-      this.renderer.domElement.style.cursor = 'pointer';
-    } else {
-      if (this.hoveredObject && this.hoveredObject !== this.selectedPostMesh) {
-        this.setHoverState(this.hoveredObject, false);
-      }
-      this.hoveredObject = null;
-      this.onPostHover(null, 0, 0);
-      this.renderer.domElement.style.cursor = 'grab';
-    }
-  }
-
-  setHoverState(mesh, isHovered) {
-    if (!mesh || !mesh.outlineMesh) return;
-    if (isHovered) {
-      mesh.outlineMesh.scale.set(1.08, 1.08, 1.15);
-      mesh.outlineMesh.material.color.setHex(0xe5a93b); // Glowing Amber on hover
-    } else {
-      mesh.outlineMesh.scale.set(1.0, 1.0, 1.0);
-      mesh.outlineMesh.material.color.setHex(mesh.userData.isCodexMode ? 0x1c150e : 0x00f0ff);
-    }
-  }
-
-  onPointerClick(event) {
-    if (this.cameraTween.active) return;
-
-    this.raycaster.setFromCamera(this.mouse, this.camera);
-    const interactiveMeshes = this.postMeshes
-      .filter(item => item.mesh.visible)
-      .map(item => item.mesh);
-
-    const intersects = this.raycaster.intersectObjects(interactiveMeshes, false);
-
-    if (intersects.length > 0) {
-      const clickedMesh = intersects[0].object;
-      this.focusPost(clickedMesh);
-    }
-  }
-
-  /**
-   * Tight camera focus animation onto fragment & visual transition to historical Codex page
-   */
-  focusPost(mesh) {
-    this.selectedPostMesh = mesh;
-    soundFX.playSync();
-
-    // Transition 3D texture to historical parchment Codex
-    this.transitionToCodex(mesh, true);
-
-    // Calculate camera target directly in front of the fragment
-    const meshPos = mesh.position.clone();
-    const forwardVec = new THREE.Vector3(0, 0, 1).applyEuler(mesh.rotation);
-    const cameraTargetPos = meshPos.clone().add(forwardVec.clone().multiplyScalar(9.5));
-    cameraTargetPos.y += 0.4;
-
-    this.animateCamera(cameraTargetPos, meshPos, 1200, () => {
-      // Trigger DOM Reading Overlay
-      this.onPostSelected(mesh.userData.postData);
-    });
-  }
-
-  /**
-   * Reset Camera to overview perspective and revert fragment to Animus Shard
-   */
-  resetView(onComplete = null) {
-    if (this.selectedPostMesh) {
-      this.transitionToCodex(this.selectedPostMesh, false);
-      this.setHoverState(this.selectedPostMesh, false);
-      this.selectedPostMesh = null;
-    }
-
-    this.animateCamera(this.defaultCameraPos, this.defaultTarget, 1000, onComplete);
-  }
-
-  animateCamera(targetPos, targetLookAt, duration = 1100, onComplete = null) {
-    this.cameraTween = {
-      active: true,
-      startTime: performance.now(),
-      duration,
-      startPos: this.camera.position.clone(),
-      targetPos: targetPos.clone(),
-      startLookAt: this.controls.target.clone(),
-      targetLookAt: targetLookAt.clone(),
-      onComplete
-    };
-    this.controls.enabled = false;
-  }
-
-  updateCameraTween(now) {
-    if (!this.cameraTween.active) return;
-
-    const elapsed = now - this.cameraTween.startTime;
-    const progress = Math.min(elapsed / this.cameraTween.duration, 1.0);
-    // Smooth cubic ease out
-    const ease = 1 - Math.pow(1 - progress, 3);
-
-    this.camera.position.lerpVectors(this.cameraTween.startPos, this.cameraTween.targetPos, ease);
-    this.controls.target.lerpVectors(this.cameraTween.startLookAt, this.cameraTween.targetLookAt, ease);
-
-    if (progress >= 1.0) {
-      this.cameraTween.active = false;
-      this.controls.enabled = true;
-      if (this.cameraTween.onComplete) {
-        this.cameraTween.onComplete();
-      }
-    }
-  }
-
-  /**
-   * Filter & Search
-   */
   applyFilterAndSearch(category, query) {
     this.activeFilter = category;
     this.searchQuery = (query || '').toLowerCase().trim();
+    this._render();
+  }
 
-    this.postMeshes.forEach(item => {
-      const p = item.postData;
-      const matchCat = (category === 'ALL' || p.category.toUpperCase() === category.toUpperCase());
-      const matchQuery = !this.searchQuery ||
-        p.title.toLowerCase().includes(this.searchQuery) ||
-        p.content.toLowerCase().includes(this.searchQuery) ||
-        p.author.toLowerCase().includes(this.searchQuery) ||
-        (p.tags && p.tags.some(t => t.toLowerCase().includes(this.searchQuery)));
+  resetView() {
+    // Smooth scroll to top
+    this.container.scrollTo({ top: 0, behavior: 'smooth' });
+  }
 
-      const isVisible = matchCat && matchQuery;
-      item.mesh.visible = isVisible;
+  _render() {
+    // Inject keyframe animation if not already done
+    if (!document.getElementById('ds-card-anim')) {
+      const style = document.createElement('style');
+      style.id = 'ds-card-anim';
+      style.textContent = `
+        @keyframes card-in {
+          from { opacity: 0; transform: translateY(36px) scale(0.92); filter: blur(6px); }
+          to   { opacity: 1; transform: translateY(0) scale(1); filter: blur(0px); }
+        }
+      `;
+      document.head.appendChild(style);
+    }
+
+    this.grid.innerHTML = '';
+
+    const filtered = this.posts.filter(p => {
+      const matchCat = this.activeFilter === 'ALL' || p.category.toUpperCase() === this.activeFilter.toUpperCase();
+      const q = this.searchQuery;
+      const matchQ = !q ||
+        p.title.toLowerCase().includes(q) ||
+        p.content.toLowerCase().includes(q) ||
+        p.author.toLowerCase().includes(q) ||
+        (p.tags && p.tags.some(t => t.toLowerCase().includes(q)));
+      return matchCat && matchQ;
     });
-  }
 
-  onWindowResize() {
-    const width = this.container.clientWidth;
-    const height = this.container.clientHeight;
-    this.camera.aspect = width / height;
-    this.camera.updateProjectionMatrix();
-    this.renderer.setSize(width, height);
-  }
-
-  /**
-   * Main Render Loop
-   */
-  animate() {
-    requestAnimationFrame(() => this.animate());
-
-    const delta = this.clock.getDelta();
-    const elapsedTime = this.clock.getElapsedTime();
-    const now = performance.now();
-
-    // 1. Camera Tweening
-    this.updateCameraTween(now);
-
-    // 2. Controls update
-    if (this.controls.enabled) {
-      this.controls.update();
-    }
-
-    // 3. DNA Helix slow rotation
-    if (this.helixGroup) {
-      this.helixGroup.rotation.y = elapsedTime * 0.15;
-    }
-
-    // 4. Floating Dust Particles motion
-    if (this.floatingParticles) {
-      this.floatingParticles.forEach(p => {
-        p.mesh.rotation.x += p.rotSpeed;
-        p.mesh.rotation.y += p.rotSpeed;
-        p.mesh.position.y += Math.sin(elapsedTime * 1.5 + p.floatOffset) * 0.008;
+    if (filtered.length === 0) {
+      this.emptyState.style.display = 'flex';
+    } else {
+      this.emptyState.style.display = 'none';
+      filtered.forEach((post, i) => {
+        const card = this._makeCard(post);
+        card.style.animationDelay = `${i * 50}ms`;
+        this.grid.appendChild(card);
       });
     }
-
-    // 5. Memory Fragments Floating Bobbing Animation
-    this.postMeshes.forEach(item => {
-      const mesh = item.mesh;
-      if (!mesh.visible) return;
-
-      // Gentle floating bob unless selected in tight focus
-      if (mesh !== this.selectedPostMesh) {
-        const phase = mesh.userData.bobPhase;
-        mesh.position.y = item.originalPos.y + Math.sin(elapsedTime * 1.2 + phase) * 0.35;
-        mesh.rotation.y = item.originalRot.y + Math.sin(elapsedTime * 0.8 + phase) * 0.04;
-      }
-
-      // Billboard the holographic badge towards camera
-      if (mesh.badgeMesh) {
-        mesh.badgeMesh.quaternion.copy(this.camera.quaternion);
-      }
-    });
-
-    this.renderer.render(this.scene, this.camera);
   }
 }
 
 
 /* ==========================================================================
-   5. UI CONTROLLER (DOM Manipulation & Application Coordination)
+   5. UI CONTROLLER
    ========================================================================== */
 class UIController {
   constructor() {
@@ -1360,7 +1045,7 @@ class UIController {
 
   initScene() {
     const container = document.getElementById('canvas-container');
-    this.scene = new ThreeAnimusScene(
+    this.scene = new CardScene(
       container,
       (post) => this.openReader(post),
       (post, x, y) => this.updateHoverCard(post, x, y)
@@ -1369,97 +1054,141 @@ class UIController {
   }
 
   bindEvents() {
-    // 1. Audio Sound Toggle
-    const btnSound = document.getElementById('btn-sound-toggle');
-    const soundIcon = document.getElementById('sound-icon');
-    btnSound.addEventListener('click', () => {
-      soundFX.enabled = !soundFX.enabled;
-      soundIcon.textContent = soundFX.enabled ? '🔊' : '🔇';
-      this.showToast(soundFX.enabled ? 'Animus SFX Activated' : 'Audio Muted');
+    // Document-wide click ripples and spark particle burst
+    document.addEventListener('click', (e) => {
+      // Don't spawn ripples on form inputs to keep focus crisp
+      if (['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName)) return;
+
+      const ripple = document.createElement('div');
+      ripple.className = 'click-ripple';
+      ripple.style.left = `${e.clientX}px`;
+      ripple.style.top = `${e.clientY}px`;
+      document.body.appendChild(ripple);
+      setTimeout(() => ripple.remove(), 600);
+
+      for (let i = 0; i < 5; i++) {
+        const spark = document.createElement('div');
+        spark.className = 'spark-particle';
+        spark.style.left = `${e.clientX}px`;
+        spark.style.top = `${e.clientY}px`;
+        const angle = (i * 72 * Math.PI) / 180 + Math.random() * 0.2;
+        const dist = Math.random() * 35 + 20;
+        spark.style.setProperty('--dx', `${Math.cos(angle) * dist}px`);
+        spark.style.setProperty('--dy', `${Math.sin(angle) * dist}px`);
+        document.body.appendChild(spark);
+        setTimeout(() => spark.remove(), 500);
+      }
     });
 
-    // 2. Camera Reset Button
+    // 1. Sound Toggle with wave bars state
+    const soundBtn = document.getElementById('btn-sound-toggle');
+    if (soundBtn) {
+      soundBtn.addEventListener('click', () => {
+        soundFX.enabled = !soundFX.enabled;
+        if (soundFX.enabled) {
+          soundBtn.classList.remove('muted');
+          soundFX.playSync();
+          this.showToast('Audio Synth Active 🔊');
+        } else {
+          soundBtn.classList.add('muted');
+          this.showToast('Audio Synth Muted 🔇');
+        }
+      });
+    }
+
+    // 2. Reset View (scroll to top)
     document.getElementById('btn-reset-view').addEventListener('click', () => {
       soundFX.playClick();
       this.scene.resetView();
-      this.closeReader();
     });
 
-    // 3. Category Filter Buttons
+    // 3. Category Filter Pills
     const pills = document.querySelectorAll('.cat-pill');
     pills.forEach(pill => {
-      pill.addEventListener('click', (e) => {
+      pill.addEventListener('click', () => {
         soundFX.playClick();
-        pills.forEach(p => {
-          p.classList.remove('bg-animus-cyan', 'text-animus-void', 'font-bold', 'shadow-animus-cyan');
-          p.classList.add('text-slate-300');
-        });
-        pill.classList.add('bg-animus-cyan', 'text-animus-void', 'font-bold', 'shadow-animus-cyan');
-        pill.classList.remove('text-slate-300');
-
+        pills.forEach(p => p.classList.remove('active-pill'));
+        pill.classList.add('active-pill');
         const cat = pill.getAttribute('data-category');
         const query = document.getElementById('search-input').value;
         this.scene.applyFilterAndSearch(cat, query);
       });
     });
 
-    // 4. Search Query Input
-    const searchInput = document.getElementById('search-input');
-    searchInput.addEventListener('input', (e) => {
-      const activePill = document.querySelector('.cat-pill.bg-animus-cyan');
+    // 4. Search Input
+    document.getElementById('search-input').addEventListener('input', (e) => {
+      const activePill = document.querySelector('.cat-pill.active-pill');
       const cat = activePill ? activePill.getAttribute('data-category') : 'ALL';
       this.scene.applyFilterAndSearch(cat, e.target.value);
     });
 
-    // 5. Reading Overlay Close Button
+    // 5. Close Reader
     document.getElementById('btn-close-reader').addEventListener('click', () => {
       this.closeReader();
     });
 
-    // 6. Like / Wax Seal Reaction Button
-    document.getElementById('btn-like-post').addEventListener('click', () => {
-      if (!this.currentPost) return;
-      soundFX.playClick();
-      const updated = this.postService.toggleLike(this.currentPost.id);
-      if (updated) {
-        document.getElementById('like-count').textContent = updated.likes;
-        document.getElementById('like-icon').textContent = updated.hasLiked ? '⚜️' : '🗡️';
-        this.showToast(updated.hasLiked ? 'Assassin Wax Seal Affixed!' : 'Seal Removed');
-      }
-    });
+    // 6. Like Button with Heart Pop micro-interaction
+    const likeBtn = document.getElementById('btn-like-post');
+    if (likeBtn) {
+      likeBtn.addEventListener('click', (e) => {
+        if (!this.currentPost) return;
+        soundFX.playLike();
+        const btn = e.currentTarget;
+        btn.classList.add('heart-popping');
+        setTimeout(() => btn.classList.remove('heart-popping'), 500);
 
-    // 7. Submit Top-Level Comment
+        const updated = this.postService.toggleLike(this.currentPost.id);
+        if (updated) {
+          document.getElementById('like-count').textContent = updated.likes;
+
+          if (updated.hasLiked) {
+            const heart = document.createElement('div');
+            heart.className = 'floating-heart';
+            heart.textContent = '💖 +1';
+            const rect = btn.getBoundingClientRect();
+            heart.style.left = `${rect.left + 10}px`;
+            heart.style.top = `${rect.top - 10}px`;
+            document.body.appendChild(heart);
+            setTimeout(() => heart.remove(), 900);
+          }
+
+          this.showToast(updated.hasLiked ? '💖 Liked!' : 'Like removed');
+          const el = document.querySelector(`.card-like-count-${updated.id}`);
+          if (el) el.textContent = updated.likes;
+        }
+      });
+    }
+
+    // 7. Submit Comment
     document.getElementById('btn-submit-comment').addEventListener('click', () => {
       this.submitComment();
     });
 
-    // 8. Open & Close Create Post Modal
+    // 8. Open/Close Create Post Modal
     document.getElementById('btn-open-create-post').addEventListener('click', () => {
       soundFX.playSync();
-      document.getElementById('modal-create-post').classList.remove('hidden');
-      document.getElementById('modal-create-post').classList.add('flex');
+      const m = document.getElementById('modal-create-post');
+      m.style.display = 'flex';
     });
 
     const closeCreateModal = () => {
       soundFX.playClick();
-      document.getElementById('modal-create-post').classList.add('hidden');
-      document.getElementById('modal-create-post').classList.remove('flex');
+      document.getElementById('modal-create-post').style.display = 'none';
     };
     document.getElementById('btn-close-create-post').addEventListener('click', closeCreateModal);
     document.getElementById('btn-cancel-create-post').addEventListener('click', closeCreateModal);
 
-    // 9. Handle Create Post Form Submission
+    // 9. Create Post Form Submit
     document.getElementById('form-create-post').addEventListener('submit', (e) => {
       e.preventDefault();
       this.createNewPost();
     });
 
-    // 10. Auth Modals (Open/Close, Login, Register, Logout)
+    // 10. Auth Modals
     const modalAuth = document.getElementById('modal-auth');
     const openAuth = (tab) => {
       soundFX.playClick();
-      modalAuth.classList.remove('hidden');
-      modalAuth.classList.add('flex');
+      modalAuth.style.display = 'flex';
       this.switchAuthTab(tab);
     };
 
@@ -1467,8 +1196,7 @@ class UIController {
     document.getElementById('btn-open-register').addEventListener('click', () => openAuth('register'));
     document.getElementById('btn-close-auth').addEventListener('click', () => {
       soundFX.playClick();
-      modalAuth.classList.add('hidden');
-      modalAuth.classList.remove('flex');
+      modalAuth.style.display = 'none';
     });
 
     document.getElementById('tab-login').addEventListener('click', () => this.switchAuthTab('login'));
@@ -1478,9 +1206,8 @@ class UIController {
       e.preventDefault();
       const username = document.getElementById('login-username').value.trim();
       this.authService.login(username);
-      modalAuth.classList.add('hidden');
-      modalAuth.classList.remove('flex');
-      this.showToast(`Subject Authorized: ${this.authService.getUserName()}`);
+      modalAuth.style.display = 'none';
+      this.showToast(`Welcome back, ${this.authService.getUserName()} 🎨`);
     });
 
     document.getElementById('form-register').addEventListener('submit', (e) => {
@@ -1488,286 +1215,103 @@ class UIController {
       const username = document.getElementById('reg-username').value.trim();
       const email = document.getElementById('reg-email').value.trim();
       this.authService.register(username, email);
-      modalAuth.classList.add('hidden');
-      modalAuth.classList.remove('flex');
-      this.showToast(`New Assassin Recruited: ${this.authService.getUserName()}`);
+      modalAuth.style.display = 'none';
+      this.showToast(`Welcome to DoodleSphere, ${this.authService.getUserName()} ✨`);
     });
 
     document.getElementById('btn-logout').addEventListener('click', () => {
       soundFX.playClick();
       this.authService.logout();
-      this.showToast('Session Desynchronized');
+      this.showToast('Signed out. See you soon! 👋');
     });
 
     this.authService.onChange(() => this.updateAuthUI());
+
+    // Close modals on backdrop click
+    document.getElementById('modal-create-post').addEventListener('click', (e) => {
+      if (e.target === e.currentTarget) e.currentTarget.style.display = 'none';
+    });
+    document.getElementById('modal-auth').addEventListener('click', (e) => {
+      if (e.target === e.currentTarget) e.currentTarget.style.display = 'none';
+    });
+    document.getElementById('reader-overlay').addEventListener('click', (e) => {
+      if (e.target === e.currentTarget) this.closeReader();
+    });
   }
 
   switchAuthTab(tab) {
     soundFX.playClick();
     const tabLogin = document.getElementById('tab-login');
-    const tabReg = document.getElementById('tab-register');
+    const tabReg   = document.getElementById('tab-register');
     const formLogin = document.getElementById('form-login');
-    const formReg = document.getElementById('form-register');
+    const formReg   = document.getElementById('form-register');
 
     if (tab === 'login') {
-      tabLogin.classList.add('border-animus-cyan', 'text-animus-cyan');
-      tabLogin.classList.remove('border-transparent', 'text-slate-400');
-      tabReg.classList.remove('border-animus-cyan', 'text-animus-cyan');
-      tabReg.classList.add('border-transparent', 'text-slate-400');
-      formLogin.classList.remove('hidden');
-      formReg.classList.add('hidden');
+      tabLogin.classList.add('active-tab');
+      tabReg.classList.remove('active-tab');
+      formLogin.style.display = 'flex';
+      formReg.style.display = 'none';
     } else {
-      tabReg.classList.add('border-animus-cyan', 'text-animus-cyan');
-      tabReg.classList.remove('border-transparent', 'text-slate-400');
-      tabLogin.classList.remove('border-animus-cyan', 'text-animus-cyan');
-      tabLogin.classList.add('border-transparent', 'text-slate-400');
-      formReg.classList.remove('hidden');
-      formLogin.classList.add('hidden');
+      tabReg.classList.add('active-tab');
+      tabLogin.classList.remove('active-tab');
+      formReg.style.display = 'flex';
+      formLogin.style.display = 'none';
     }
   }
 
   updateAuthUI() {
     const loggedIn = this.authService.isLoggedIn();
-    const loggedInContainer = document.getElementById('auth-logged-in');
+    const loggedInContainer  = document.getElementById('auth-logged-in');
     const loggedOutContainer = document.getElementById('auth-logged-out');
-    const commenterPreview = document.getElementById('commenter-name-preview');
+    const commenterPreview   = document.getElementById('commenter-name-preview');
 
     if (loggedIn) {
-      loggedInContainer.classList.remove('hidden');
-      loggedInContainer.classList.add('flex');
-      loggedOutContainer.classList.add('hidden');
-
+      loggedInContainer.style.display = 'flex';
+      loggedOutContainer.style.display = 'none';
       const user = this.authService.user;
       document.getElementById('user-avatar').textContent = user.avatar || 'A';
       document.getElementById('user-display-name').textContent = user.name;
       if (commenterPreview) commenterPreview.textContent = user.name;
     } else {
-      loggedInContainer.classList.add('hidden');
-      loggedInContainer.classList.remove('flex');
-      loggedOutContainer.classList.remove('hidden');
-      if (commenterPreview) commenterPreview.textContent = 'Unsynchronized Subject';
+      loggedInContainer.style.display = 'none';
+      loggedOutContainer.style.display = 'flex';
+      if (commenterPreview) commenterPreview.textContent = 'Anonymous Doodler';
     }
   }
 
-  updateHoverCard(post, x, y) {
-    const card = document.getElementById('post-hover-card');
-    if (!post) {
-      card.classList.add('opacity-0');
-      card.style.left = '-999px';
-      card.style.top = '-999px';
-      return;
-    }
-
-    document.getElementById('hover-category').textContent = post.category.toUpperCase();
-    document.getElementById('hover-title').textContent = post.title;
-    document.getElementById('hover-meta').textContent = `By ${post.author} • ${post.readTime}`;
-
-    card.style.left = `${x}px`;
-    card.style.top = `${y}px`;
-    card.classList.remove('opacity-0');
-  }
-
-  /**
-   * Generates an authentic Leonardo da Vinci Renaissance Blueprint SVG
-   * dynamically tailored to the post's theme and category.
-   */
-  generateCodexBlueprintSVG(post) {
-    const isTech = post.category === 'TECH';
-    const isPhilosophy = post.category === 'PHILOSOPHY';
-    const isLore = post.category === 'LORE';
-
-    // 1. TECH SCHEMATIC (Leonardo's Optical Refraction, Shaders & Mechanical Gears)
-    if (isTech) {
-      return `
-        <svg viewBox="0 0 600 240" class="w-full h-full" xmlns="http://www.w3.org/2000/svg">
-          <defs>
-            <pattern id="blueprint-dots" width="16" height="16" patternUnits="userSpaceOnUse">
-              <circle cx="8" cy="8" r="1.5" fill="#4b3827" fill-opacity="0.25"/>
-            </pattern>
-          </defs>
-          <rect width="600" height="240" fill="url(#blueprint-dots)" />
-          
-          <!-- Background Assassin Watermark -->
-          <path d="M500 40 L450 180 L470 180 L500 110 L530 180 L550 180 Z" fill="#4b3827" fill-opacity="0.08"/>
-          
-          <!-- Optical Lens & Ray Inversion Scheme -->
-          <circle cx="200" cy="120" r="70" fill="none" stroke="#1c150e" stroke-width="2.5" stroke-dasharray="4,2"/>
-          <circle cx="200" cy="120" r="55" fill="none" stroke="#4b3827" stroke-width="1.5"/>
-          <circle cx="200" cy="120" r="4" fill="#8a181a"/>
-          
-          <!-- Mechanical Gear Assembly -->
-          <g transform="translate(370, 110)">
-            <circle cx="0" cy="0" r="45" fill="none" stroke="#1c150e" stroke-width="2.5"/>
-            <circle cx="0" cy="0" r="32" fill="none" stroke="#4b3827" stroke-width="1.5"/>
-            <circle cx="0" cy="0" r="12" fill="#e5a93b" fill-opacity="0.4" stroke="#1c150e" stroke-width="2"/>
-            <!-- Gear Teeth -->
-            ${Array.from({ length: 12 }).map((_, i) => {
-              const a = (i * 30 * Math.PI) / 180;
-              const x1 = Math.cos(a) * 45; const y1 = Math.sin(a) * 45;
-              const x2 = Math.cos(a) * 53; const y2 = Math.sin(a) * 53;
-              return `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#1c150e" stroke-width="3"/>`;
-            }).join('')}
-          </g>
-
-          <!-- Intersecting Ray Tracing Lines & Angle Arcs -->
-          <line x1="40" y1="50" x2="360" y2="190" stroke="#8a181a" stroke-width="1.8" stroke-dasharray="6,3"/>
-          <line x1="40" y1="190" x2="360" y2="50" stroke="#8a181a" stroke-width="1.8" stroke-dasharray="6,3"/>
-          <line x1="20" y1="120" x2="580" y2="120" stroke="#1c150e" stroke-width="1.2" stroke-opacity="0.5"/>
-          
-          <!-- Caliper Measurement Marks -->
-          <line x1="130" y1="20" x2="270" y2="20" stroke="#1c150e" stroke-width="1.5"/>
-          <line x1="130" y1="15" x2="130" y2="25" stroke="#1c150e" stroke-width="1.5"/>
-          <line x1="270" y1="15" x2="270" y2="25" stroke="#1c150e" stroke-width="1.5"/>
-          <text x="180" y="16" font-family="Share Tech Mono" font-size="10" fill="#1c150e" font-weight="bold">Ø = 14.2 BRACCIA</text>
-          
-          <!-- Leonardo Italian Mirror Inscription -->
-          <text x="40" y="215" font-family="Kalam" font-style="italic" font-size="13" fill="#4b3827">
-            "Della prospettiva dei colori et delle linee... l'ombra e la luce in punto"
-          </text>
-          <text x="440" y="215" font-family="Share Tech Mono" font-size="11" fill="#008080" font-weight="bold">
-            [SHADER_MATRIX // OK]
-          </text>
-        </svg>
-      `;
-    }
-
-    // 2. CODEX SCHEMATIC (Leonardo's Flying Machine / Ornithopter Wing Breakdown)
-    if (!isPhilosophy && !isLore) {
-      return `
-        <svg viewBox="0 0 600 240" class="w-full h-full" xmlns="http://www.w3.org/2000/svg">
-          <!-- Compass Grid -->
-          <circle cx="300" cy="120" r="90" fill="none" stroke="#4b3827" stroke-width="1" stroke-opacity="0.3"/>
-          <circle cx="300" cy="120" r="110" fill="none" stroke="#4b3827" stroke-width="1" stroke-dasharray="4,4" stroke-opacity="0.4"/>
-          
-          <!-- Ornithopter Wing Skeletal Frame -->
-          <path d="M 60 180 Q 220 40 420 70 Q 540 90 560 130 Q 420 120 280 160 Z" fill="#ecdcb9" fill-opacity="0.6" stroke="#1c150e" stroke-width="3"/>
-          
-          <!-- Ribbed Struts & Pulleys -->
-          <line x1="160" y1="130" x2="190" y2="60" stroke="#1c150e" stroke-width="2"/>
-          <line x1="230" y1="145" x2="270" y2="55" stroke="#1c150e" stroke-width="2"/>
-          <line x1="310" y1="140" x2="350" y2="60" stroke="#1c150e" stroke-width="2"/>
-          <line x1="390" y1="125" x2="430" y2="72" stroke="#1c150e" stroke-width="2"/>
-          <line x1="470" y1="110" x2="500" y2="82" stroke="#1c150e" stroke-width="1.8"/>
-
-          <!-- Tensioner Wires & Pull-cord Ring -->
-          <path d="M 60 180 L 300 120 L 560 130" fill="none" stroke="#8a181a" stroke-width="1.8" stroke-dasharray="5,2"/>
-          <circle cx="300" cy="120" r="6" fill="#8a181a"/>
-          
-          <!-- Aerodynamic Vector Arrows -->
-          <path d="M 120 50 Q 180 20 240 40" fill="none" stroke="#e5a93b" stroke-width="2" marker-end="url(#arrow)"/>
-          <path d="M 280 30 Q 340 10 400 30" fill="none" stroke="#e5a93b" stroke-width="2"/>
-          
-          <!-- Scribe Notes -->
-          <text x="50" y="35" font-family="Cinzel" font-size="12" font-weight="bold" fill="#1c150e">
-            FIG. I — ALA DIRETTA CON GIUNTO DI SALICE
-          </text>
-          <text x="50" y="215" font-family="Kalam" font-style="italic" font-size="13" fill="#4b3827">
-            "L'uomo colle sue larghe ale movendo contro l'aria resistera et volera." — Codex fol. 38r
-          </text>
-        </svg>
-      `;
-    }
-
-    // 3. PHILOSOPHY SCHEMATIC (The Assassin Hidden Blade & Brotherhood Insignia)
-    if (isPhilosophy) {
-      return `
-        <svg viewBox="0 0 600 240" class="w-full h-full" xmlns="http://www.w3.org/2000/svg">
-          <!-- Background Concentric Circles -->
-          <circle cx="300" cy="120" r="85" fill="none" stroke="#4b3827" stroke-width="1.5" stroke-opacity="0.3"/>
-          <line x1="100" y1="120" x2="500" y2="120" stroke="#4b3827" stroke-width="1" stroke-opacity="0.3"/>
-          <line x1="300" y1="20" x2="300" y2="220" stroke="#4b3827" stroke-width="1" stroke-opacity="0.3"/>
-
-          <!-- Assassin Brotherhood Insignia Crest -->
-          <g transform="translate(300, 115) scale(0.95)">
-            <path d="M 0 -75 L -55 55 L -30 55 L 0 -5 L 30 55 L 55 55 Z" fill="#8a181a" stroke="#1c150e" stroke-width="2.5"/>
-            <path d="M 0 15 L -22 68 L 0 80 L 22 68 Z" fill="#8a181a" stroke="#1c150e" stroke-width="2"/>
-          </g>
-
-          <!-- Hidden Blade Mechanism Cross-Section (Forearm Rail & Spring Cam) -->
-          <rect x="70" y="105" width="460" height="30" rx="4" fill="#ecdcb9" fill-opacity="0.5" stroke="#1c150e" stroke-width="2.5"/>
-          <line x1="120" y1="120" x2="480" y2="120" stroke="#8a181a" stroke-width="3"/>
-          
-          <!-- Spring Coils -->
-          ${Array.from({ length: 14 }).map((_, i) => {
-            const x = 140 + i * 18;
-            return `<path d="M ${x} 110 Q ${x + 9} 102 ${x + 18} 110 Q ${x + 9} 138 ${x + 18} 130" fill="none" stroke="#1c150e" stroke-width="2"/>`;
-          }).join('')}
-
-          <!-- Inscription -->
-          <text x="60" y="35" font-family="Cinzel" font-size="13" font-weight="bold" fill="#1c150e">
-            PROGETTO LAMA CELATA // MECCANISMO A SCATTO
-          </text>
-          <text x="60" y="215" font-family="Kalam" font-style="italic" font-size="13" fill="#4b3827">
-            "Nulla è reale, ogni cosa è lecita. Agiamo nell'ombra per servire la luce."
-          </text>
-        </svg>
-      `;
-    }
-
-    // 4. LORE SCHEMATIC (Piece of Eden Quantum Relic Geometry)
-    return `
-      <svg viewBox="0 0 600 240" class="w-full h-full" xmlns="http://www.w3.org/2000/svg">
-        <!-- Spherical Grid & Orbital Rings -->
-        <circle cx="300" cy="120" r="75" fill="#ecdcb9" fill-opacity="0.5" stroke="#1c150e" stroke-width="3"/>
-        <ellipse cx="300" cy="120" rx="75" ry="30" fill="none" stroke="#e5a93b" stroke-width="2"/>
-        <ellipse cx="300" cy="120" rx="30" ry="75" fill="none" stroke="#e5a93b" stroke-width="2"/>
-        <circle cx="300" cy="120" r="45" fill="none" stroke="#8a181a" stroke-width="1.8" stroke-dasharray="4,2"/>
-        <circle cx="300" cy="120" r="8" fill="#8a181a"/>
-
-        <!-- Fibonacci Golden Spirals -->
-        <path d="M 300 120 Q 340 100 375 120 T 450 170" fill="none" stroke="#1c150e" stroke-width="1.8" stroke-dasharray="3,3"/>
-        <path d="M 300 120 Q 260 140 225 120 T 150 70" fill="none" stroke="#1c150e" stroke-width="1.8" stroke-dasharray="3,3"/>
-
-        <!-- Precursor Isu Glyphs -->
-        <text x="60" y="35" font-family="Cinzel" font-size="13" font-weight="bold" fill="#1c150e">
-          REPERTO ISU #02 // MATRICE QUANTISTICA DEL PRECURSORE
-        </text>
-        <text x="60" y="215" font-family="Kalam" font-style="italic" font-size="13" fill="#4b3827">
-          "Chi possiede la mela, comanda la percezione dell'umanità intera."
-        </text>
-      </svg>
-    `;
-  }
+  updateHoverCard(post, x, y) {}
 
   openReader(post) {
     this.currentPost = post;
+    soundFX.playParchmentRustle();
 
-    // Header & Meta Details
-    document.getElementById('reader-category').textContent = `${post.category} // RECONSTRUCTION`;
+    document.getElementById('reader-category').textContent = post.category;
     document.getElementById('reader-readtime').textContent = post.readTime;
     document.getElementById('reader-title').textContent = post.title;
     document.getElementById('reader-author-name').textContent = post.author;
-    document.getElementById('reader-date').textContent = post.date || 'Historical Record';
+    document.getElementById('reader-date').textContent = post.date || 'Posted recently';
     document.getElementById('reader-author-avatar').textContent = (post.author || 'A')[0].toUpperCase();
-
-    // Dynamic Sequence and Author Bio
-    const seqEl = document.getElementById('reader-sequence');
-    if (seqEl) {
-      seqEl.textContent = post.era ? `SEQUENCE // ${post.era.toUpperCase()}` : 'HISTORICAL SEQUENCE // RECONSTRUCTED';
-    }
-
-    const bioEl = document.getElementById('reader-author-bio');
-    if (bioEl) {
-      bioEl.textContent = post.authorBio || 'Brotherhood Chronicler';
-    }
-
-    const folioEl = document.getElementById('blueprint-folio-title');
-    if (folioEl) {
-      folioEl.textContent = `FOLIO_${post.category}_${post.id.slice(-4).toUpperCase()} // LEONARDO CODEX`;
-    }
-
-    // Populate Dynamic Technical Blueprint Banner SVG
-    const blueprintCanvas = document.getElementById('reader-blueprint-canvas');
-    if (blueprintCanvas) {
-      blueprintCanvas.innerHTML = this.generateCodexBlueprintSVG(post);
-    }
-
-    // Like Reaction Wax Seal
     document.getElementById('like-count').textContent = post.likes;
 
-    // Format Editorial Content with Illuminated Renaissance Initial
+    const seqEl = document.getElementById('reader-sequence');
+    if (seqEl) seqEl.textContent = post.era ? `✨ ${post.era}` : '✨ Creative Sequence';
+
+    const bioEl = document.getElementById('reader-author-bio');
+    if (bioEl) bioEl.textContent = post.authorBio || 'DoodleSphere Creator';
+
+    const folioEl = document.getElementById('blueprint-folio-title');
+    if (folioEl) folioEl.textContent = `${post.category} • ${post.id.slice(-6).toUpperCase()}`;
+
+    // Blueprint banner with SVG animations
+    const blueprintCanvas = document.getElementById('reader-blueprint-canvas');
+    if (blueprintCanvas) {
+      blueprintCanvas.innerHTML = this.generateBlueprintSVG(post);
+    }
+
+    // Article body
     const bodyEl = document.getElementById('reader-body');
     bodyEl.innerHTML = '';
+    const cs = getCatStyle(post.category);
     const paragraphs = post.content.split('\n\n').filter(p => p.trim());
 
     paragraphs.forEach((pText, idx) => {
@@ -1775,68 +1319,163 @@ class UIController {
       const p = document.createElement('p');
 
       if (idx === 0) {
-        // Gilded Renaissance Illuminated Drop Cap
         const firstLetter = cleanText.charAt(0);
-        const restOfText = cleanText.slice(1);
-
-        p.className = 'leading-relaxed text-codex-ink text-lg sm:text-xl mb-5 font-manuscript';
+        const rest = cleanText.slice(1);
+        p.style.cssText = 'margin-bottom:18px;';
         p.innerHTML = `
-          <span class="inline-block float-left mr-3.5 mb-1 px-3.5 py-1.5 bg-gradient-to-br from-[#8a181a] via-[#6f1315] to-[#45090b] text-[#f7f1df] font-codex font-black text-3xl sm:text-4xl rounded-md border-2 border-[#1c150e] shadow-[3px_3px_0px_#1c150e] leading-none select-none">
-            ${firstLetter}
-          </span>
-          <span>${restOfText}</span>
+          <span style="
+            display:inline-block;float:left;
+            margin:0 12px 4px 0;
+            width:52px;height:52px;border-radius:12px;
+            background:${cs.badge};
+            display:flex;align-items:center;justify-content:center;
+            font-family:'Orbitron',sans-serif;font-size:28px;font-weight:900;
+            color:#fff;flex-shrink:0;
+            box-shadow:0 4px 14px rgba(168,85,247,0.3);
+            float:left;
+          ">${firstLetter}</span>${rest}`;
+      } else if (cleanText.startsWith('"') || cleanText.startsWith('\u201c')) {
+        p.style.cssText = `
+          margin:18px 0;padding:16px 20px;border-radius:12px;
+          background:rgba(168,85,247,0.06);
+          border-left:4px solid ${cs.border};
+          font-style:italic;color:#5b21b6;font-size:17px;
         `;
-      } else if (cleanText.startsWith('"') || cleanText.startsWith('“')) {
-        // Illuminated Blockquote Style
-        p.className = 'my-6 p-4 rounded-lg bg-amber-50/70 border-l-4 border-[#8a181a] italic font-manuscript text-xl text-amber-950 shadow-sm';
-        p.innerHTML = `<em>${cleanText}</em>`;
+        p.textContent = cleanText;
       } else {
-        p.className = 'leading-relaxed text-codex-ink text-lg sm:text-xl mb-4 font-manuscript';
+        p.style.cssText = 'margin-bottom:16px;';
         p.textContent = cleanText;
       }
       bodyEl.appendChild(p);
-
-      // Add a subtle marginalia flourish after paragraph 2
-      if (idx === 1 && paragraphs.length > 2) {
-        const marginalia = document.createElement('div');
-        marginalia.className = 'my-3 py-1.5 px-3 border-y border-dashed border-amber-800/30 flex items-center justify-between text-xs font-doodle text-amber-900/80 bg-amber-100/30 rounded';
-        marginalia.innerHTML = `
-          <span>✍ Scribe Note: Folio verified against Venice archival rolls</span>
-          <span class="font-mono text-[10px] text-amber-950 font-bold">⚜ CODEX ARCHIVE</span>
-        `;
-        bodyEl.appendChild(marginalia);
-      }
     });
 
-    // Render Tags
+    // Tags
     const tagsContainer = document.getElementById('reader-tags');
     tagsContainer.innerHTML = '';
     (post.tags || []).forEach(tag => {
       const tagSpan = document.createElement('span');
-      tagSpan.className = 'px-2.5 py-1 text-xs font-mono font-bold bg-codex-parchmentDark text-codex-ink border border-codex-ink rounded shadow-sm';
+      tagSpan.className = 'reader-tag';
       tagSpan.textContent = `#${tag}`;
       tagsContainer.appendChild(tagSpan);
     });
 
-    // Render Comments
+    // Comments
     this.renderComments(post.comments || []);
 
-    // Open Drawer Animation
+    // Open panel with spring entrance
     const overlay = document.getElementById('reader-overlay');
-    const panel = document.getElementById('reader-panel');
-    overlay.classList.remove('opacity-0', 'pointer-events-none');
-    panel.classList.remove('translate-x-full');
+    const panel   = document.getElementById('reader-panel');
+    overlay.style.opacity = '1';
+    overlay.style.pointerEvents = 'auto';
+    panel.style.transform = 'translateX(0)';
+
+    // Trigger staggered element animation
+    const readerBody = document.querySelector('.reader-body');
+    if (readerBody) {
+      readerBody.classList.remove('reader-body-animate');
+      void readerBody.offsetWidth; // trigger reflow
+      readerBody.classList.add('reader-body-animate');
+    }
   }
 
   closeReader() {
+    soundFX.playClick();
     const overlay = document.getElementById('reader-overlay');
-    const panel = document.getElementById('reader-panel');
-    panel.classList.add('translate-x-full');
-    overlay.classList.add('opacity-0', 'pointer-events-none');
-
-    // Recenter camera overview in 3D void
-    this.scene.resetView();
+    const panel   = document.getElementById('reader-panel');
+    panel.style.transform = 'translateX(100%)';
+    overlay.style.opacity = '0';
+    overlay.style.pointerEvents = 'none';
     this.currentPost = null;
+  }
+
+  generateBlueprintSVG(post) {
+    const cs = getCatStyle(post.category);
+    const isTech = post.category === 'TECH';
+    const isPhilo = post.category === 'PHILOSOPHY';
+    const isLore  = post.category === 'LORE';
+
+    if (isTech) {
+      return `
+        <svg viewBox="0 0 600 200" class="w-full h-full" xmlns="http://www.w3.org/2000/svg">
+          <rect width="600" height="200" fill="#f3eeff"/>
+          <g class="bp-spin-cw">
+            <circle cx="180" cy="100" r="65" fill="none" stroke="#a855f7" stroke-width="2" stroke-dasharray="8,4" class="bp-dash-animated" opacity="0.6"/>
+            <circle cx="180" cy="100" r="42" fill="none" stroke="#ec4899" stroke-width="1.5" stroke-dasharray="4,2" opacity="0.5"/>
+          </g>
+          <circle cx="180" cy="100" r="8" fill="#a855f7" class="bp-pulse-dot"/>
+          <g class="bp-spin-ccw">
+            <circle cx="420" cy="100" r="50" fill="none" stroke="#2dd4bf" stroke-width="2" stroke-dasharray="6,3" class="bp-dash-animated" opacity="0.6"/>
+            ${Array.from({length:8}).map((_,i)=>{
+              const a = i*45*Math.PI/180;
+              return `<line x1="${420+Math.cos(a)*42}" y1="${100+Math.sin(a)*42}" x2="${420+Math.cos(a)*54}" y2="${100+Math.sin(a)*54}" stroke="#2dd4bf" stroke-width="3" opacity="0.7"/>`;
+            }).join('')}
+          </g>
+          <line x1="50" y1="100" x2="550" y2="100" stroke="#c4b5fd" stroke-width="1" stroke-dasharray="5,5"/>
+          <rect x="0" y="0" width="600" height="4" fill="url(#laser-grad)" class="bp-scan-line"/>
+          <defs>
+            <linearGradient id="laser-grad" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0%" stop-color="transparent"/>
+              <stop offset="50%" stop-color="#00f0ff"/>
+              <stop offset="100%" stop-color="transparent"/>
+            </linearGradient>
+          </defs>
+          <text x="40" y="30" font-family="Space Grotesk" font-size="12" font-weight="700" fill="#7c5fad">⚡ TECH SCHEMATIC // ${post.category}</text>
+          <text x="40" y="185" font-family="Caveat" font-style="italic" font-size="13" fill="#a78bfa">"${post.title.substring(0,50)}..."</text>
+        </svg>
+      `;
+    }
+
+    if (isPhilo) {
+      return `
+        <svg viewBox="0 0 600 200" class="w-full h-full" xmlns="http://www.w3.org/2000/svg">
+          <rect width="600" height="200" fill="#fff9f0"/>
+          <g class="bp-spin-cw">
+            <circle cx="300" cy="100" r="80" fill="none" stroke="#fb923c" stroke-width="2" stroke-dasharray="6,4" opacity="0.5"/>
+            <circle cx="300" cy="100" r="60" fill="none" stroke="#facc15" stroke-width="1" opacity="0.4"/>
+          </g>
+          <path d="M300 20 L245 150 L265 150 L300 80 L335 150 L355 150 Z" fill="#fb923c" fill-opacity="0.15" stroke="#fb923c" stroke-width="2"/>
+          <circle cx="300" cy="100" r="6" fill="#fb923c" class="bp-pulse-dot"/>
+          <line x1="100" y1="100" x2="500" y2="100" stroke="#fbbf24" stroke-width="1" stroke-dasharray="5,3" opacity="0.6"/>
+          <line x1="300" y1="10" x2="300" y2="190" stroke="#fbbf24" stroke-width="1" stroke-dasharray="5,3" opacity="0.6"/>
+          <text x="40" y="30" font-family="Space Grotesk" font-size="12" font-weight="700" fill="#b45309">🏛 PHILOSOPHY // CREED DIAGRAM</text>
+          <text x="40" y="185" font-family="Caveat" font-style="italic" font-size="13" fill="#d97706">"Nothing is true, everything is permitted."</text>
+        </svg>
+      `;
+    }
+
+    if (isLore) {
+      return `
+        <svg viewBox="0 0 600 200" class="w-full h-full" xmlns="http://www.w3.org/2000/svg">
+          <rect width="600" height="200" fill="#fff5f5"/>
+          <circle cx="300" cy="100" r="70" fill="none" stroke="#f43f5e" stroke-width="2.5" opacity="0.5"/>
+          <g class="bp-spin-cw">
+            <ellipse cx="300" cy="100" rx="70" ry="28" fill="none" stroke="#fb923c" stroke-width="1.5" stroke-dasharray="4,2" opacity="0.6"/>
+          </g>
+          <g class="bp-spin-ccw">
+            <ellipse cx="300" cy="100" rx="28" ry="70" fill="none" stroke="#f43f5e" stroke-width="1.5" stroke-dasharray="4,2" opacity="0.6"/>
+          </g>
+          <circle cx="300" cy="100" r="8" fill="#f43f5e" class="bp-pulse-dot"/>
+          <text x="40" y="30" font-family="Space Grotesk" font-size="12" font-weight="700" fill="#9f1239">🍎 LORE // PRECURSOR ARTIFACT SCAN</text>
+          <text x="40" y="185" font-family="Caveat" font-style="italic" font-size="13" fill="#e11d48">"Ancient technology beyond human understanding..."</text>
+        </svg>
+      `;
+    }
+
+    // Default (CODEX)
+    return `
+      <svg viewBox="0 0 600 200" class="w-full h-full" xmlns="http://www.w3.org/2000/svg">
+        <rect width="600" height="200" fill="#f9f5ff"/>
+        <g class="bp-spin-cw">
+          <circle cx="300" cy="100" r="70" fill="none" stroke="#a855f7" stroke-width="1.5" stroke-dasharray="6,4" opacity="0.5"/>
+        </g>
+        <line x1="220" y1="20" x2="300" y2="180" stroke="#a855f7" stroke-width="1.5" opacity="0.4"/>
+        <line x1="380" y1="20" x2="300" y2="180" stroke="#ec4899" stroke-width="1.5" opacity="0.4"/>
+        <line x1="170" y1="100" x2="430" y2="100" stroke="#c4b5fd" stroke-width="1" stroke-dasharray="4,3"/>
+        <circle cx="300" cy="100" r="6" fill="#a855f7" class="bp-pulse-dot"/>
+        <text x="40" y="30" font-family="Space Grotesk" font-size="12" font-weight="700" fill="#7c5fad">📜 CODEX // HISTORICAL SCHEMATIC</text>
+        <text x="40" y="185" font-family="Caveat" font-style="italic" font-size="13" fill="#a78bfa">"${post.title.substring(0,55)}..."</text>
+      </svg>
+    `;
   }
 
   renderComments(comments) {
@@ -1847,8 +1486,8 @@ class UIController {
 
     if (!comments || comments.length === 0) {
       container.innerHTML = `
-        <div class="text-center py-8 font-doodle text-codex-sepia text-sm">
-          No observations recorded yet. Be the first to inscribe your annotations!
+        <div style="text-align:center;padding:32px 20px;font-family:'Caveat',cursive;color:#a78bfa;font-size:18px;">
+          No annotations yet. Be the first to comment! ✍️
         </div>
       `;
       return;
@@ -1856,77 +1495,98 @@ class UIController {
 
     const renderCommentNode = (c, depth = 0) => {
       const el = document.createElement('div');
-      el.className = `p-3 sm:p-4 rounded-lg bg-white/70 border border-codex-sepia/30 shadow-sm ${depth > 0 ? 'ml-4 sm:ml-8 mt-2 border-l-3 border-l-codex-redWax bg-amber-50/50' : 'mb-3'}`;
+      el.style.cssText = `
+        padding:14px 16px;border-radius:12px;
+        background:${depth > 0 ? 'rgba(168,85,247,0.05)' : '#fff'};
+        border:1.5px solid ${depth > 0 ? 'rgba(168,85,247,0.2)' : '#ede8ff'};
+        ${depth > 0 ? 'margin-left:20px;margin-top:8px;' : 'margin-bottom:10px;'}
+        animation: slide-up-fade 0.35s ease-out both;
+      `;
 
       el.innerHTML = `
-        <div class="flex items-center justify-between mb-1.5">
-          <div class="flex items-center gap-2">
-            <div class="w-6 h-6 rounded-full bg-codex-parchmentDark border border-codex-ink flex items-center justify-center font-codex text-xs font-bold text-codex-ink">
-              ${(c.author || 'A')[0].toUpperCase()}
-            </div>
-            <span class="font-codex font-bold text-xs text-codex-ink">${c.author}</span>
-            <span class="font-mono text-[10px] text-codex-sepia">• ${c.date}</span>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <div style="
+              width:26px;height:26px;border-radius:8px;
+              background:linear-gradient(135deg,#a855f7,#ec4899);
+              display:flex;align-items:center;justify-content:center;
+              font-family:'Orbitron',sans-serif;font-size:12px;font-weight:800;color:#fff;
+            ">${(c.author || 'A')[0].toUpperCase()}</div>
+            <span style="font-family:'Orbitron',sans-serif;font-size:13px;font-weight:700;color:#1a1030;">${c.author}</span>
+            <span style="font-family:'Fira Code',monospace;font-size:11px;color:#a78bfa;">· ${c.date}</span>
           </div>
-          <button data-comment-id="${c.id}" class="btn-upvote-comment text-xs font-mono text-codex-sepia hover:text-codex-redWax font-bold flex items-center gap-1">
-            ▲ <span>${c.upvotes || 0}</span>
-          </button>
+          <button data-comment-id="${c.id}" class="btn-upvote-comment" style="
+            background:none;border:1.5px solid #ede8ff;border-radius:20px;
+            padding:3px 10px;font-family:'Fira Code',monospace;font-size:12px;font-weight:700;
+            color:#a78bfa;cursor:pointer;display:flex;align-items:center;gap:4px;transition:all 0.2s;
+          ">▲ ${c.upvotes || 0}</button>
         </div>
-        <p class="text-sm font-sans text-codex-ink pl-8 leading-relaxed">${c.text}</p>
-        <div class="flex items-center justify-end mt-2 pt-1 border-t border-codex-sepia/20">
-          <button data-parent-id="${c.id}" class="btn-reply-toggle text-[11px] font-animus text-codex-redWax hover:underline font-bold">
-            [ ADD RECURSIVE REPLY ]
-          </button>
+        <p style="font-family:'Syne',sans-serif;font-size:14px;color:#2e1a5b;line-height:1.6;margin-bottom:8px;padding-left:34px;">${c.text}</p>
+        <div style="display:flex;justify-content:flex-end;padding-left:34px;">
+          <button data-parent-id="${c.id}" class="btn-reply-toggle" style="
+            background:none;border:none;font-family:'Rajdhani',sans-serif;font-size:14px;
+            color:#a855f7;cursor:pointer;font-weight:700;
+          ">↩ Reply</button>
         </div>
-        <div id="reply-box-${c.id}" class="hidden mt-2 pt-2">
-          <textarea id="reply-input-${c.id}" rows="2" placeholder="Inscribe your reply..."
-            class="w-full p-2 border border-codex-ink rounded text-xs font-sans bg-codex-parchment text-codex-ink resize-none"></textarea>
-          <div class="flex justify-end gap-2 mt-1">
-            <button data-cancel-id="${c.id}" class="btn-cancel-reply text-[10px] font-animus text-codex-sepia px-2 py-1">CANCEL</button>
-            <button data-submit-id="${c.id}" class="btn-submit-reply bg-codex-sepia hover:bg-codex-ink text-white text-[10px] font-codex font-bold px-3 py-1 rounded">SEND ✍️</button>
+        <div id="reply-box-${c.id}" style="display:none;margin-top:10px;padding-left:34px;">
+          <textarea id="reply-input-${c.id}" rows="2" placeholder="Write your reply…" style="
+            width:100%;padding:8px 12px;border:2px solid #ede8ff;border-radius:10px;
+            background:#faf8ff;font-family:'Syne',sans-serif;font-size:13px;
+            color:#1a1030;resize:none;outline:none;
+          "></textarea>
+          <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:6px;">
+            <button data-cancel-id="${c.id}" class="btn-cancel-reply" style="
+              background:none;border:1.5px solid #ede8ff;border-radius:20px;
+              padding:5px 14px;font-family:'Syne',sans-serif;font-size:12px;color:#a78bfa;cursor:pointer;
+            ">Cancel</button>
+            <button data-submit-id="${c.id}" class="btn-submit-reply" style="
+              background:linear-gradient(135deg,#a855f7,#ec4899);border:none;border-radius:20px;
+              padding:5px 16px;font-family:'Orbitron',sans-serif;font-size:12px;font-weight:700;
+              color:#fff;cursor:pointer;
+            ">Send ✨</button>
           </div>
         </div>
       `;
 
-      // Upvote action
-      el.querySelector('.btn-upvote-comment').addEventListener('click', () => {
-        soundFX.playClick();
+      // Upvote spring animation
+      el.querySelector('.btn-upvote-comment').addEventListener('click', (ev) => {
+        soundFX.playUpvote();
+        const btn = ev.currentTarget;
+        btn.classList.add('upvote-active');
+        setTimeout(() => btn.classList.remove('upvote-active'), 450);
         this.postService.upvoteComment(this.currentPost.id, c.id);
         this.renderComments(this.currentPost.comments);
       });
 
-      // Reply Toggle
+      // Reply toggle
       const replyBox = el.querySelector(`#reply-box-${c.id}`);
       el.querySelector('.btn-reply-toggle').addEventListener('click', () => {
-        replyBox.classList.toggle('hidden');
+        soundFX.playClick();
+        replyBox.style.display = replyBox.style.display === 'none' ? 'block' : 'none';
       });
       el.querySelector('.btn-cancel-reply').addEventListener('click', () => {
-        replyBox.classList.add('hidden');
+        soundFX.playClick();
+        replyBox.style.display = 'none';
       });
       el.querySelector('.btn-submit-reply').addEventListener('click', () => {
         const text = document.getElementById(`reply-input-${c.id}`).value.trim();
         if (!text) return;
         soundFX.playClick();
-        const author = this.authService.getUserName();
-        this.postService.addComment(this.currentPost.id, text, author, c.id);
+        this.postService.addComment(this.currentPost.id, text, this.authService.getUserName(), c.id);
         this.renderComments(this.currentPost.comments);
       });
 
-      // Render nested replies recursively
+      // Nested replies
       if (c.replies && c.replies.length > 0) {
-        const repliesContainer = document.createElement('div');
-        repliesContainer.className = 'space-y-2';
-        c.replies.forEach(subComment => {
-          repliesContainer.appendChild(renderCommentNode(subComment, depth + 1));
-        });
-        el.appendChild(repliesContainer);
+        const repliesWrap = document.createElement('div');
+        c.replies.forEach(sub => repliesWrap.appendChild(renderCommentNode(sub, depth + 1)));
+        el.appendChild(repliesWrap);
       }
 
       return el;
     };
 
-    comments.forEach(c => {
-      container.appendChild(renderCommentNode(c, 0));
-    });
+    comments.forEach(c => container.appendChild(renderCommentNode(c, 0)));
   }
 
   submitComment() {
@@ -1935,66 +1595,72 @@ class UIController {
     if (!text || !this.currentPost) return;
 
     soundFX.playClick();
-    const author = this.authService.getUserName();
-    this.postService.addComment(this.currentPost.id, text, author);
+    this.postService.addComment(this.currentPost.id, text, this.authService.getUserName());
     input.value = '';
     this.renderComments(this.currentPost.comments);
-    this.showToast('Codex Annotation Synchronized!');
+    this.showToast('Comment posted ✨');
   }
 
   createNewPost() {
-    const title = document.getElementById('post-input-title').value.trim();
+    const title    = document.getElementById('post-input-title').value.trim();
     const category = document.getElementById('post-input-category').value;
-    const stamp = document.getElementById('post-input-stamp').value;
-    const author = document.getElementById('post-input-author').value.trim() || this.authService.getUserName();
+    const stamp    = document.getElementById('post-input-stamp').value;
+    const author   = document.getElementById('post-input-author').value.trim() || this.authService.getUserName();
     const tagsInput = document.getElementById('post-input-tags').value.trim();
-    const content = document.getElementById('post-input-content').value.trim();
-
+    const content  = document.getElementById('post-input-content').value.trim();
     const tags = tagsInput ? tagsInput.split(',').map(t => t.trim()).filter(Boolean) : [];
 
-    const newPost = this.postService.create({
-      title,
-      category,
-      stamp,
-      author,
-      tags,
-      content
-    });
+    const newPost = this.postService.create({ title, category, stamp, author, tags, content });
 
-    // Close modal & reset form
-    document.getElementById('modal-create-post').classList.add('hidden');
-    document.getElementById('modal-create-post').classList.remove('flex');
+    document.getElementById('modal-create-post').style.display = 'none';
     document.getElementById('form-create-post').reset();
 
-    // Spawn 3D Fragment in Three.js Animus Void in real time!
     this.scene.addNewPost(newPost);
-    this.showToast(`Memory Sequence Injected: "${title.substring(0, 20)}..."`);
+    soundFX.playGlitch();
+    this.showToast(`"${title.substring(0, 24)}…" posted! 🚀`);
   }
 
   showToast(message) {
     const container = document.getElementById('toast-container');
     const toast = document.createElement('div');
-    toast.className = 'animus-bracket-box px-4 py-2.5 rounded text-xs font-animus text-animus-cyan border border-animus-cyan shadow-animus-cyan flex items-center gap-2 transform translate-x-full transition-transform duration-300';
+    toast.style.cssText = `
+      background:rgba(22,22,40,0.95);
+      backdrop-filter:blur(16px);
+      border:1.5px solid rgba(168,85,247,0.4);
+      border-radius:12px;
+      padding:12px 20px 14px;
+      font-family:'Orbitron',sans-serif;
+      font-size:13px;font-weight:700;
+      color:#f0effe;
+      display:flex;align-items:center;gap:10px;
+      box-shadow:0 12px 36px rgba(0,0,0,0.4), 0 0 20px rgba(168,85,247,0.2);
+      pointer-events:auto;
+      position:relative;
+      overflow:hidden;
+      transform:translateX(120%);
+      transition:transform 0.35s cubic-bezier(0.34,1.56,0.64,1);
+    `;
     toast.innerHTML = `
-      <span class="w-2 h-2 rounded-full bg-animus-cyan animate-ping"></span>
+      <span style="width:8px;height:8px;border-radius:50%;background:linear-gradient(135deg,#a855f7,#ec4899);flex-shrink:0;"></span>
       <span>${message}</span>
+      <div class="toast-progress-bar"></div>
     `;
     container.appendChild(toast);
 
     requestAnimationFrame(() => {
-      toast.classList.remove('translate-x-full');
+      toast.style.transform = 'translateX(0)';
     });
 
     setTimeout(() => {
-      toast.classList.add('translate-x-full');
-      setTimeout(() => toast.remove(), 300);
+      toast.style.transform = 'translateX(120%)';
+      setTimeout(() => toast.remove(), 350);
     }, 3200);
   }
 }
 
-// Initialize Application when DOM content is ready (handles deferred/module timing)
+// Boot
 function initApp() {
-  console.log('[AnimusCodex] Initializing Animus Void Engine & UIController...');
+  console.log('[DoodleSphere] Animated startup 🎨⚡');
   new UIController();
 }
 
@@ -2003,4 +1669,3 @@ if (document.readyState === 'loading') {
 } else {
   initApp();
 }
-
